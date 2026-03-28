@@ -1,115 +1,151 @@
-let mappings = [];
+let rows = [];
 let cmsSlugs = [];
+let activeRow = null;
 let idCounter = 0;
 
+const rowsEl = document.getElementById("mapping-rows");
 const fromInput = document.getElementById("from-input");
-const cmsList = document.getElementById("cms-list");
 const cmsSearch = document.getElementById("cms-search");
-const mappingList = document.getElementById("mapping-list");
+const cmsResults = document.getElementById("cms-results");
 
 const csvDialog = document.getElementById("csv-dialog");
 const csvPreview = document.getElementById("csv-preview");
 
-function normalizeLines(text) {
+/* Helpers */
+function splitLines(text) {
   return text.split("\n").map(v => v.trim()).filter(Boolean);
 }
 
-/* Load From Slugs */
-document.getElementById("import-from").onclick = () => {
-  normalizeLines(fromInput.value).forEach(from => {
-    mappings.push({
+/* Load From slugs */
+document.getElementById("load-from").onclick = () => {
+  splitLines(fromInput.value).forEach(from => {
+    rows.push({
       id: ++idCounter,
       from,
-      to: "",
+      to: ""
     });
   });
+
   fromInput.value = "";
-  renderMappings();
+  renderRows();
 };
 
-/* Load CMS Slugs */
-(async function loadCMS() {
-  const data = await chrome.runtime.sendMessage({ type: "RUN_WEBSITE_INSPECTION" });
+/* Load CMS slugs from inspector */
+(async function () {
+  const data = await chrome.runtime.sendMessage({
+    type: "RUN_WEBSITE_INSPECTION"
+  });
+
   cmsSlugs = data.slugs || [];
   renderCMS();
 })();
 
-/* Render CMS Slugs */
+/* CMS search */
+cmsSearch.oninput = () => renderCMS(cmsSearch.value);
+
 function renderCMS(filter = "") {
-  cmsList.innerHTML = "";
+  cmsResults.innerHTML = "";
+
   cmsSlugs
-    .filter(s => s.includes(filter))
+    .filter(slug => slug.includes(filter))
     .forEach(slug => {
       const div = document.createElement("div");
+      div.className = "cms-cell";
       div.textContent = slug;
-      div.className = "cms-item";
-      div.onclick = () => assignSlug(slug);
-      cmsList.appendChild(div);
+
+      div.onclick = () => {
+        if (!activeRow) return;
+        activeRow.to = slug;
+        renderRows();
+      };
+
+      cmsResults.appendChild(div);
     });
 }
 
-cmsSearch.oninput = () => renderCMS(cmsSearch.value);
+/* Render mapping rows */
+function renderRows() {
+  rowsEl.innerHTML = "";
 
-/* Assign CMS Slug */
-function assignSlug(slug) {
-  const target = mappings.find(m => !m.to);
-  if (!target) return;
-  target.to = slug;
-  renderMappings();
-}
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
 
-/* Render Mappings */
-function renderMappings() {
-  mappingList.innerHTML = "";
+    if (!r.to) tr.classList.add("unmapped");
+    if (activeRow === r) tr.classList.add("active");
 
-  mappings.forEach(m => {
-    const div = document.createElement("article");
-    div.className = `mapping-item ${m.to ? "mapped" : "unmapped"}`;
+    /* From cell */
+    const fromTd = document.createElement("td");
+    fromTd.textContent = r.from;
 
-    div.innerHTML = `
-      <strong>From:</strong> ${m.from}<br/>
-      <strong>To:</strong>
-      <input value="${m.to}" placeholder="Select CMS slug" />
-    `;
+    /* To cell */
+    const toTd = document.createElement("td");
+    const toInput = document.createElement("input");
+    toInput.placeholder = "Select CMS slug";
+    toInput.value = r.to;
 
-    const input = div.querySelector("input");
-    input.oninput = e => m.to = e.target.value;
-
-    const remove = document.createElement("button");
-    remove.textContent = "Remove";
-    remove.onclick = () => {
-      mappings = mappings.filter(x => x.id !== m.id);
-      renderMappings();
+    toInput.onfocus = () => {
+      activeRow = r;
+      renderRows();
+      cmsSearch.focus();
     };
 
-    div.appendChild(remove);
-    mappingList.appendChild(div);
+    toInput.oninput = e => {
+      r.to = e.target.value;
+    };
+
+    toTd.appendChild(toInput);
+
+    /* Actions */
+    const actionTd = document.createElement("td");
+    const actions = document.createElement("div");
+    actions.className = "row-actions";
+
+    const clearBtn = document.createElement("button");
+    clearBtn.textContent = "×";
+    clearBtn.title = "Clear mapping";
+    clearBtn.onclick = () => {
+      r.to = "";
+      renderRows();
+    };
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "✕";
+    removeBtn.title = "Remove row";
+    removeBtn.onclick = () => {
+      rows = rows.filter(x => x.id !== r.id);
+      renderRows();
+    };
+
+    actions.append(clearBtn, removeBtn);
+    actionTd.appendChild(actions);
+
+    tr.append(fromTd, toTd, actionTd);
+    rowsEl.appendChild(tr);
   });
 }
 
-/* CSV Preview */
-document.getElementById("export-preview").onclick = () => {
+/* CSV helpers */
+function buildCSV() {
+  return ["From,To"]
+    .concat(
+      rows.map(r => `"${r.from}","${r.to || ""}"`)
+    )
+    .join("\n");
+}
+
+document.getElementById("preview-csv").onclick = () => {
   csvPreview.value = buildCSV();
   csvDialog.showModal();
 };
 
-document.getElementById("close-csv").onclick = () => csvDialog.close();
-
-/* CSV Export */
-document.getElementById("export-csv").onclick = () => {
-  const csv = buildCSV();
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "slug-mappings.csv";
-  a.click();
+document.getElementById("close-csv").onclick = () => {
+  csvDialog.close();
 };
 
-/* CSV Builder */
-function buildCSV() {
-  let csv = "From,To\n";
-  mappings.forEach(m => {
-    csv += `"${m.from}","${m.to || ""}"\n`;
-  });
-  return csv;
-}
+document.getElementById("export-csv").onclick = () => {
+  const blob = new Blob([buildCSV()], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "slug-mapping.csv";
+  a.click();
+};

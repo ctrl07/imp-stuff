@@ -1,50 +1,65 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>URL Redirects</title>
+
   <link rel="stylesheet" href="../../styles/styles.css">
   <link rel="stylesheet" href="./mapper.css">
 </head>
 
 <body>
-  <main class="container">
+  <main class="slug-mapper">
 
-    <header>
-      <h2>Slug Mapping Tool</h2>
-      <p>Interactive URL mapping workspace.</p>
+    <!-- Header -->
+    <header class="header">
+      <div>
+        <h2>Ul Redirects</h2>
+        <p class="hint">wip</p>
+      </div>
+
+      <div class="actions">
+        <button id="preview-csv">Preview CSV</button>
+        <button id="export-csv" class="primary">Export CSV</button>
+      </div>
     </header>
 
-    <section class="grid">
-      <article>
-        <h4>From Slugs</h4>
+    <!-- From input -->
+    <section class="inputs">
+      <label>From Slugs</label>
+      <div class="from-input-row">
         <textarea id="from-input" placeholder="/all-inventory/"></textarea>
-        <button id="import-from">Load From Slugs</button>
-      </article>
+        <button id="load-from">Load</button>
+      </div>
+    </section>
 
-      <article>
-        <h4>CMS Slugs</h4>
+    <!-- Workspace -->
+    <section class="workspace">
+
+      <!-- Mapping table -->
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>To</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="mapping-rows"></tbody>
+        </table>
+      </div>
+
+      <!-- CMS reference -->
+      <aside class="cms">
+        <label>CMS Slugs</label>
         <input id="cms-search" placeholder="Search CMS slugs…" />
-        <div id="cms-list"></div>
-      </article>
+        <div id="cms-results"></div>
+      </aside>
+
     </section>
 
-    <section>
-      <h4>Environment Context</h4>
-      <input id="staging-id" placeholder="Staging Dealer ID (optional)" />
-      <input id="live-host" placeholder="Live hostname (example.com)" />
-    </section>
-
-    <section>
-      <h4>Mapping Workspace</h4>
-      <div id="mapping-list"></div>
-    </section>
-
-    <footer>
-      <button id="export-preview">Preview CSV</button>
-      <button id="export-csv" class="primary">Export CSV</button>
-    </footer>
-
+    <!-- CSV Preview -->
     <dialog id="csv-dialog">
       <h4>CSV Preview</h4>
       <textarea id="csv-preview" readonly></textarea>

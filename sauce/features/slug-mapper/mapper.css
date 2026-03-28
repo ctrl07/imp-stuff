@@ -1,60 +1,121 @@
-.container {
+.slug-mapper {
   padding: 1rem;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
-textarea {
-  width: 100%;
-  min-height: 6rem;
+.hint {
+  font-size: 0.85rem;
+  color: #666;
 }
 
-#cms-list {
-  max-height: 250px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-}
-
-.cms-item {
-  padding: 0.4rem;
-  cursor: pointer;
-}
-
-.cms-item:hover {
-  background: #eef;
-}
-
-.mapping-item {
-  border: 1px solid #ddd;
-  padding: 0.6rem;
-  margin-bottom: 0.6rem;
-  border-radius: 6px;
-}
-
-.mapping-item.unmapped {
-  border-left: 4px solid #d33;
-}
-
-.mapping-item.mapped {
-  border-left: 4px solid #3a3;
-}
-
-.mapping-actions {
+.actions {
   display: flex;
   gap: 0.5rem;
+}
+
+.inputs {
+  margin-top: 1rem;
+}
+
+.from-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.from-input-row textarea {
+  flex: 1;
+  min-height: 3.5rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 70% 30%;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+  padding: 0.4rem;
+}
+
+td {
+  padding: 0.4rem;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+tr.unmapped {
+  background: #fff5f5;
+}
+
+tr.active {
+  background: #eef3ff;
+}
+
+td input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #ddd;
+}
+
+td input:focus {
+  outline: none;
+  border-bottom-color: #444;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.row-actions button {
+  padding: 0 6px;
+}
+
+.cms {
+  border-left: 1px solid #ddd;
+  padding-left: 1rem;
+}
+
+#cms-results {
+  max-height: 65vh;
+  overflow-y: auto;
   margin-top: 0.5rem;
 }
 
+.cms-cell {
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.cms-cell:hover {
+  background: #edf2ff;
+}
+
 dialog {
-  width: min(90vw, 540px);
+  width: min(90vw, 520px);
   resize: both;
 }
 
 #csv-preview {
-  height: 300px;
   width: 100%;
+  height: 300px;
 }
