@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8">
-  <title>URL Redirects</title>
+  <meta charset="utf-8" />
+  <title>URL Redirects Helper</title>
 
   <link rel="stylesheet" href="../../styles/styles.css">
   <link rel="stylesheet" href="./mapper.css">
@@ -13,57 +13,51 @@
 
     <!-- Header -->
     <header class="header">
-      <div>
-        <h2>Ul Redirects</h2>
-        <p class="hint">wip</p>
+      <div class="title">
+        <h2>URL Redirects Helper</h2>
+        <p class="hint">Interaction driven redirect mapping</p>
       </div>
 
-      <div class="actions">
-        <button id="preview-csv">Preview CSV</button>
-        <button id="export-csv" class="primary">Export CSV</button>
+      <div class="top-inputs">
+        <div class="input-box">
+          <label>From URLs</label>
+          <textarea id="fromInput"></textarea>
+          <button id="loadFrom">Load</button>
+        </div>
+
+        <div class="input-box">
+          <label>To Slugs</label>
+          <textarea id="toInput"></textarea>
+          <button id="loadTo">Load</button>
+        </div>
       </div>
     </header>
-
-    <!-- From input -->
-    <section class="inputs">
-      <label>From Slugs</label>
-      <div class="from-input-row">
-        <textarea id="from-input" placeholder="/all-inventory/"></textarea>
-        <button id="load-from">Load</button>
-      </div>
-    </section>
 
     <!-- Workspace -->
     <section class="workspace">
 
-      <!-- Mapping table -->
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>From</th>
-              <th>To</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="mapping-rows"></tbody>
-        </table>
-      </div>
+      <!-- From rows -->
+      <section class="from-panel">
+        <div class="actions">
+          <button id="previewCsv">Preview CSV</button>
+          <button id="exportCsv">Export CSV</button>
+        </div>
 
-      <!-- CMS reference -->
-      <aside class="cms">
-        <label>CMS Slugs</label>
-        <input id="cms-search" placeholder="Search CMS slugs…" />
-        <div id="cms-results"></div>
+        <div id="fromTable"></div>
+      </section>
+
+      <!-- To stash -->
+      <aside class="to-panel">
+        <h4>To Slug Stash</h4>
+        <div id="toStash"></div>
       </aside>
 
     </section>
 
     <!-- CSV Preview -->
-    <dialog id="csv-dialog">
-      <h4>CSV Preview</h4>
-      <textarea id="csv-preview" readonly></textarea>
-      <button id="close-csv">Close</button>
+    <dialog id="csvDialog">
+      <textarea id="csvOutput" readonly></textarea>
+      <button onclick="csvDialog.close()">Close</button>
     </dialog>
 
   </main>

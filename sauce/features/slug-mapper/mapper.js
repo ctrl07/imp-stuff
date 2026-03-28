@@ -1,151 +1,177 @@
-let rows = [];
-let cmsSlugs = [];
-let activeRow = null;
-let idCounter = 0;
+console.log("[SlugMapper] Script loaded");
 
-const rowsEl = document.getElementById("mapping-rows");
-const fromInput = document.getElementById("from-input");
-const cmsSearch = document.getElementById("cms-search");
-const cmsResults = document.getElementById("cms-results");
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("[SlugMapper] DOMContentLoaded fired");
 
-const csvDialog = document.getElementById("csv-dialog");
-const csvPreview = document.getElementById("csv-preview");
+  // DOM LOOKUPS
+  const fromTable = document.getElementById("fromTable");
+  const fromInput = document.getElementById("fromInput");
+  const toInput = document.getElementById("toInput");
+  const toStashEl = document.getElementById("toStash");
 
-/* Helpers */
-function splitLines(text) {
-  return text.split("\n").map(v => v.trim()).filter(Boolean);
-}
+  const loadFromBtn = document.getElementById("loadFrom");
+  const loadToBtn = document.getElementById("loadTo");
 
-/* Load From slugs */
-document.getElementById("load-from").onclick = () => {
-  splitLines(fromInput.value).forEach(from => {
-    rows.push({
-      id: ++idCounter,
-      from,
-      to: ""
+  const previewBtn = document.getElementById("previewCsv");
+  const exportBtn = document.getElementById("exportCsv");
+
+  const csvDialog = document.getElementById("csvDialog");
+  const csvOutput = document.getElementById("csvOutput");
+
+  console.log("[SlugMapper] DOM elements:", {
+    fromTable,
+    fromInput,
+    toInput,
+    toStashEl,
+    loadFromBtn,
+    loadToBtn,
+    previewBtn,
+    exportBtn,
+    csvDialog,
+    csvOutput
+  });
+
+  // STATE
+  let fromRows = [];
+  let toStash = [];
+
+  // SAFETY CHECK
+  if (!fromTable || !fromInput || !toInput || !toStashEl) {
+    console.error("[SlugMapper] Critical DOM elements missing. JS will not run.");
+    return;
+  }
+
+  // LOAD FROM URLS
+  loadFromBtn.onclick = () => {
+    console.log("[SlugMapper] loadFrom clicked");
+    console.log("[SlugMapper] raw fromInput value:", fromInput.value);
+
+    const values = fromInput.value
+      .split("\n")
+      .map(v => v.trim())
+      .filter(Boolean);
+
+    console.log("[SlugMapper] parsed From values:", values);
+
+    values.forEach(v => {
+      fromRows.push({
+        id: crypto.randomUUID(),
+        from: v,
+        to: null
+      });
     });
-  });
 
-  fromInput.value = "";
-  renderRows();
-};
+    console.log("[SlugMapper] fromRows state after load:", fromRows);
 
-/* Load CMS slugs from inspector */
-(async function () {
-  const data = await chrome.runtime.sendMessage({
-    type: "RUN_WEBSITE_INSPECTION"
-  });
+    fromInput.value = "";
+    renderFromRows();
+  };
 
-  cmsSlugs = data.slugs || [];
-  renderCMS();
-})();
+  // LOAD TO SLUGS
+  loadToBtn.onclick = () => {
+    console.log("[SlugMapper] loadTo clicked");
+    console.log("[SlugMapper] raw toInput value:", toInput.value);
 
-/* CMS search */
-cmsSearch.oninput = () => renderCMS(cmsSearch.value);
+    const values = toInput.value
+      .split("\n")
+      .map(v => v.trim())
+      .filter(Boolean);
 
-function renderCMS(filter = "") {
-  cmsResults.innerHTML = "";
+    console.log("[SlugMapper] parsed To values:", values);
 
-  cmsSlugs
-    .filter(slug => slug.includes(filter))
-    .forEach(slug => {
+    values.forEach(v => {
+      toStash.push({
+        id: crypto.randomUUID(),
+        slug: v
+      });
+    });
+
+    console.log("[SlugMapper] toStash state after load:", toStash);
+
+    toInput.value = "";
+    renderToStash();
+  };
+
+  // RENDER FROM ROWS
+  function renderFromRows() {
+    console.log("[SlugMapper] renderFromRows called");
+    console.log("[SlugMapper] rendering rows:", fromRows);
+
+    fromTable.innerHTML = "";
+
+    fromRows.forEach((row, index) => {
       const div = document.createElement("div");
-      div.className = "cms-cell";
-      div.textContent = slug;
+      div.className = "from-row" + (row.to ? "" : " unmapped");
 
-      div.onclick = () => {
-        if (!activeRow) return;
-        activeRow.to = slug;
-        renderRows();
+      const num = document.createElement("div");
+      num.textContent = index + 1;
+
+      const fromCell = document.createElement("div");
+      fromCell.textContent = row.from;
+
+      const toCell = document.createElement("div");
+      toCell.className = "from-to";
+      toCell.textContent = row.to || "Drop To slug here";
+
+      toCell.ondragover = e => e.preventDefault();
+
+      toCell.ondrop = e => {
+        const slug = e.dataTransfer.getData("text/plain");
+        console.log("[SlugMapper] dropped slug:", slug);
+        row.to = slug;
+        renderFromRows();
       };
 
-      cmsResults.appendChild(div);
+      div.append(num, fromCell, toCell);
+      fromTable.appendChild(div);
     });
-}
+  }
 
-/* Render mapping rows */
-function renderRows() {
-  rowsEl.innerHTML = "";
+  // RENDER TO STASH
+  function renderToStash() {
+    console.log("[SlugMapper] renderToStash called");
+    console.log("[SlugMapper] rendering toStash:", toStash);
 
-  rows.forEach(r => {
-    const tr = document.createElement("tr");
+    toStashEl.innerHTML = "";
 
-    if (!r.to) tr.classList.add("unmapped");
-    if (activeRow === r) tr.classList.add("active");
+    toStash.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "to-card";
+      card.textContent = item.slug;
+      card.draggable = true;
 
-    /* From cell */
-    const fromTd = document.createElement("td");
-    fromTd.textContent = r.from;
+      card.ondragstart = e => {
+        console.log("[SlugMapper] dragstart slug:", item.slug);
+        e.dataTransfer.setData("text/plain", item.slug);
+      };
 
-    /* To cell */
-    const toTd = document.createElement("td");
-    const toInput = document.createElement("input");
-    toInput.placeholder = "Select CMS slug";
-    toInput.value = r.to;
+      toStashEl.appendChild(card);
+    });
+  }
 
-    toInput.onfocus = () => {
-      activeRow = r;
-      renderRows();
-      cmsSearch.focus();
-    };
+  // CSV
+  previewBtn.onclick = () => {
+    console.log("[SlugMapper] Preview CSV clicked");
+    csvOutput.value = buildCSV();
+    csvDialog.showModal();
+  };
 
-    toInput.oninput = e => {
-      r.to = e.target.value;
-    };
+  exportBtn.onclick = () => {
+    console.log("[SlugMapper] Export CSV clicked");
+    const blob = new Blob([buildCSV()], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "slug-mapping.csv";
+    a.click();
+  };
 
-    toTd.appendChild(toInput);
+  function buildCSV() {
+    console.log("[SlugMapper] buildCSV called");
+    return [
+      "From,To",
+      ...fromRows.map(r => `"${r.from}","${r.to || ""}"`)
+    ].join("\n");
+  }
 
-    /* Actions */
-    const actionTd = document.createElement("td");
-    const actions = document.createElement("div");
-    actions.className = "row-actions";
-
-    const clearBtn = document.createElement("button");
-    clearBtn.textContent = "×";
-    clearBtn.title = "Clear mapping";
-    clearBtn.onclick = () => {
-      r.to = "";
-      renderRows();
-    };
-
-    const removeBtn = document.createElement("button");
-    removeBtn.textContent = "✕";
-    removeBtn.title = "Remove row";
-    removeBtn.onclick = () => {
-      rows = rows.filter(x => x.id !== r.id);
-      renderRows();
-    };
-
-    actions.append(clearBtn, removeBtn);
-    actionTd.appendChild(actions);
-
-    tr.append(fromTd, toTd, actionTd);
-    rowsEl.appendChild(tr);
-  });
-}
-
-/* CSV helpers */
-function buildCSV() {
-  return ["From,To"]
-    .concat(
-      rows.map(r => `"${r.from}","${r.to || ""}"`)
-    )
-    .join("\n");
-}
-
-document.getElementById("preview-csv").onclick = () => {
-  csvPreview.value = buildCSV();
-  csvDialog.showModal();
-};
-
-document.getElementById("close-csv").onclick = () => {
-  csvDialog.close();
-};
-
-document.getElementById("export-csv").onclick = () => {
-  const blob = new Blob([buildCSV()], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "slug-mapping.csv";
-  a.click();
-};
+  console.log("[SlugMapper] Initialization complete");
+});
