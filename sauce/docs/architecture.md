@@ -1,57 +1,50 @@
 # Architecture Overview
 
-This extension is intentionally designed to be simple, explainable,
-and safe to evolve.
+This extension follows a strict, predictable flow:
 
-It prioritizes clarity over cleverness.
+Web Page (DOM)
+→ Content Script (reads only)
+→ Background (decides meaning)
+→ UI (displays information)
 
----
+## Content Script
+- Reads data from the webpage
+- Never decides meaning
+- Never touches UI or storage
+- Never imports utilities
 
-## Core Principles
+## Background
+- Receives raw data
+- Uses utilities to apply logic
+- Orchestrates responses
+- Owns all decisions
 
-1. Planning comes before automation
-2. Background code never touches the DOM
-3. Content scripts do one thing only
-4. UI is replaceable
-5. Automation must be stoppable
-6. Boring code is good code
+## Utilities
+- Pure functions only
+- No DOM
+- No Chrome APIs
+- No UI dependencies
 
----
+## UI (Side Panel)
+- Displays results
+- Handles copy/export actions
+- Never inspects the page directly
 
-## The Layers
+## Add a New Inspector Section
 
-### 1. Background (The Brain)
-- Decision-making
-- Validation
-- Planning
-- CMS rules
-- No DOM access
+HTML:
+- <h4>My Section</h4>
+- <div id="my-section"></div>
 
-### 2. Features (Tools)
-Each feature:
-- Lives in its own folder
-- Has its own UI
-- Talks to background only
+JS:
+function renderMySection(data) {
+  const el = document.getElementById("my-section");
+  el.innerHTML = "";
 
-### 3. Content Scripts (Hands & Eyes)
-- Touch CMS DOM
-- No business logic
-- Disposable by design
+  if (!data) {
+    renderEmpty(el);
+    return;
+  }
 
-### 4. Styles
-- Minimal
-- No heavy animation
-- Scoped only to extension UI
-
----
-
-## Why This Matters
-
-This separation allows:
-
-- reduce automation (our goal is to deliver qualiy over quantity)
-- easier testing
-- parallel contributions
-- learning architecture gradually
-
-This is intentional design, not overhead.
+  renderValue(el, data);
+}
