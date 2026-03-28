@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>URL Redirects</title>
+  <link rel="stylesheet" href="../../styles/styles.css">
+  <link rel="stylesheet" href="./mapper.css">
+</head>
+
+<body>
+  <main class="container">
+
+    <header>
+      <h2>Slug Mapping Tool</h2>
+      <p>Interactive URL mapping workspace.</p>
+    </header>
+
+    <section class="grid">
+      <article>
+        <h4>From Slugs</h4>
+        <textarea id="from-input" placeholder="/all-inventory/"></textarea>
+        <button id="import-from">Load From Slugs</button>
+      </article>
+
+      <article>
+        <h4>CMS Slugs</h4>
+        <input id="cms-search" placeholder="Search CMS slugs…" />
+        <div id="cms-list"></div>
+      </article>
+    </section>
+
+    <section>
+      <h4>Environment Context</h4>
+      <input id="staging-id" placeholder="Staging Dealer ID (optional)" />
+      <input id="live-host" placeholder="Live hostname (example.com)" />
+    </section>
+
+    <section>
+      <h4>Mapping Workspace</h4>
+      <div id="mapping-list"></div>
+    </section>
+
+    <footer>
+      <button id="export-preview">Preview CSV</button>
+      <button id="export-csv" class="primary">Export CSV</button>
+    </footer>
+
+    <dialog id="csv-dialog">
+      <h4>CSV Preview</h4>
+      <textarea id="csv-preview" readonly></textarea>
+      <button id="close-csv">Close</button>
+    </dialog>
+
+  </main>
+
+  <script src="./mapper.js"></script>
+</body>
+</html>

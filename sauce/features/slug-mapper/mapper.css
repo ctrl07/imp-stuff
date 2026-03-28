@@ -1,0 +1,60 @@
+.container {
+  padding: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+textarea {
+  width: 100%;
+  min-height: 6rem;
+}
+
+#cms-list {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+}
+
+.cms-item {
+  padding: 0.4rem;
+  cursor: pointer;
+}
+
+.cms-item:hover {
+  background: #eef;
+}
+
+.mapping-item {
+  border: 1px solid #ddd;
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+  border-radius: 6px;
+}
+
+.mapping-item.unmapped {
+  border-left: 4px solid #d33;
+}
+
+.mapping-item.mapped {
+  border-left: 4px solid #3a3;
+}
+
+.mapping-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+dialog {
+  width: min(90vw, 540px);
+  resize: both;
+}
+
+#csv-preview {
+  height: 300px;
+  width: 100%;
+}
