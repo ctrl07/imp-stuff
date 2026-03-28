@@ -47,19 +47,14 @@
     <div id="analytics-info"></div>
   </div>
 
-  <dialog id="slug-dialog">
-  <h4>Slugs</h4>
+   <dialog id="slug-dialog">
+     <h4>Slugs</h4>
+   <textarea id="slug-text" readonly></textarea>
 
-  <textarea
-    id="slug-text"
-    style="width:100%; height:140px;"
-    readonly
-  ></textarea>
-
-  <div style="margin-top:8px; display:flex; gap:8px;">
+  <div class="dialog-actions">
     <button id="copy-slug-text">Copy</button>
     <button id="close-slug-dialog">Close</button>
-  </div>
+   </div>
 </dialog>
 
   <script type="module" src="inspector.js"></script>
