@@ -10,13 +10,11 @@ export function normalizeSchema(nodes) {
     if (!node || typeof node !== "object") return;
 
     if (node.address) {
-      Object.assign(result.address, {
-        street: result.address.street ?? node.address.streetAddress,
-        city: result.address.city ?? node.address.addressLocality,
-        state: result.address.state ?? node.address.addressRegion,
-        zip: result.address.zip ?? node.address.postalCode,
-        country: result.address.country ?? node.address.addressCountry
-      });
+      result.address.street ??= node.address.streetAddress;
+      result.address.city ??= node.address.addressLocality;
+      result.address.state ??= node.address.addressRegion;
+      result.address.zip ??= node.address.postalCode;
+      result.address.country ??= node.address.addressCountry;
     }
 
     if (node.geo) {

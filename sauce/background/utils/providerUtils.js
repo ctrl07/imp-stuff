@@ -1,4 +1,4 @@
-export function detectProvider(schemaNodes, documentLinks, scriptSrcs) {
+export function detectProvider(schemaNodes, links, scriptSrcs) {
   const providers = [
     { name: "dealer-inspire", match: "dealerinspire.com" },
     { name: "dealer-com", match: "dealer.com" },
@@ -21,7 +21,7 @@ export function detectProvider(schemaNodes, documentLinks, scriptSrcs) {
   }
 
   for (const p of providers) {
-    if (documentLinks.some(href => href.includes(p.match))) {
+    if (links.some(link => link.includes(p.match))) {
       return { name: p.name, confidence: "medium" };
     }
   }

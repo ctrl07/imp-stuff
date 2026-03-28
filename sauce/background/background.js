@@ -1,74 +1,68 @@
-import { normalizeWhitespace } from './utils/stringUtils.js';
-import { CMS_BEHAVIOR } from './utils/cmsBehaviorUtils.js';
-import { normalizeSchema } from "./utils/schemaUtils.js";
-import { detectProvider } from "./utils/providerUtils.js";
 import { extractAnalyticsCodes } from "./utils/analyticsUtils.js";
+import { detectProvider } from "./utils/providerUtils.js";
+import { normalizeSchema } from "./utils/schemaUtils.js";
 
-
-import {
-  registerVehicleMenus,
-  resolveVehicleMenuText
-} from "./menus/vehicleMenus.js";
-
-
-chrome.runtime.onInstalled.addListener(registerVehicleMenus);
-chrome.runtime.onStartup.addListener(registerVehicleMenus);
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (!tab?.id) return;
-
-  const text = resolveVehicleMenuText(info.menuItemId);
-  if (!text) return;
-
-  chrome.tabs.sendMessage(tab.id, {
-    action: "insertText",
-    text
+/* Enable side panel */
+function enableSidePanel() {
+  chrome.sidePanel.setPanelBehavior({
+    openPanelOnActionClick: true
   });
-});
+}
 
+chrome.runtime.onInstalled.addListener(enableSidePanel);
+chrome.runtime.onStartup.addListener(enableSidePanel);
 
-chrome.runtime.onMessage.addListener(async (message, sender) => {
-  if (message.type === 'RESOLVE_CURRENT_PAGE') {
-    const context = await chrome.tabs.sendMessage(
-      sender.tab.id,
-      { type: 'GET_CMS_CONTEXT' }
-    );
+/* Website Inspector */
+chrome.runtime.onMessage.addListener(async (msg) => {
+  if (msg.type === "RUN_WEBSITE_INSPECTION") {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    });
 
-    const slug = normalizeWhitespace(context.slug || '');
+    if (!tab?.id) {
+      throw new Error("No active tab found");
+    }
 
-    const previewUrl = CMS_BEHAVIOR.PREVIEW_URLS_ARE_DETERMINISTIC
-      ? `/preview/${slug}`
-      : null;
+    const pageData = await chrome.tabs.sendMessage(tab.id, {
+      type: "INSPECT_WEBSITE"
+    });
 
     return {
-      slug,
-      previewUrl,
-      sourceUrl: context.url
+      url: pageData.url,
+      meta: {
+        title: pageData.title,
+        description: pageData.description
+      },
+      provider: detectProvider(
+        pageData.schemaNodes,
+        pageData.links,
+        pageData.scriptSrcs
+      ),
+      schema: normalizeSchema(pageData.schemaNodes),
+      analytics: extractAnalyticsCodes(pageData.scriptSrcs),
+      slugs: pageData.slugs
     };
   }
 });
 
+/* Toolbar click */
+chrome.action.onClicked.addListener(tab => {
+  if (tab?.windowId) {
+    chrome.sidePanel.open({ windowId: tab.windowId });
+  }
+});
 
-chrome.runtime.onMessage.addListener(async (msg, sender) => {
-  if (msg.type === "RUN_WEBSITE_INSPECTION") {
-    const pageData = await chrome.tabs.sendMessage(sender.tab.id, {
-      type: "INSPECT_WEBSITE"
+/* Keyboard shortcut */
+chrome.commands.onCommand.addListener(cmd => {
+  if (cmd === "open-side-panel") {
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      if (tabs[0]) {
+        chrome.sidePanel.open({
+          tabId: tabs[0].id,
+          windowId: tabs[0].windowId
+        });
+      }
     });
-
-    const schema = normalizeSchema(pageData.schemaNodes);
-    const provider = detectProvider(
-      pageData.schemaNodes,
-      pageData.links,
-      pageData.scriptSrcs
-    );
-
-    return {
-      url: pageData.url,
-      meta: { title: pageData.title, description: pageData.description },
-      provider,
-      schema,
-      analytics: extractAnalyticsCodes(pageData.scriptSrcs),
-      slugs: pageData.slugs
-    };
   }
 });
