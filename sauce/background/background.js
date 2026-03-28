@@ -1,6 +1,33 @@
 import { extractAnalyticsCodes } from "./utils/analyticsUtils.js";
 import { detectProvider } from "./utils/providerUtils.js";
 import { normalizeSchema } from "./utils/schemaUtils.js";
+import { registerVehicleMenus, resolveVehicleMenuText } from "./menus/vehicleMenus.js";
+
+
+function initMenus() {
+  registerVehicleMenus();
+}
+
+chrome.runtime.onInstalled.addListener(initMenus);
+chrome.runtime.onStartup.addListener(initMenus);
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (!tab?.id) return;
+
+  const text = resolveVehicleMenuText(info.menuItemId);
+  if (!text) return;
+
+  chrome.tabs.sendMessage(tab.id, {
+    action: "insertText",
+    text
+  });
+});
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.action === "insertText") {
+    insertText(lastFocusedElement, msg.text);
+  }
+});
 
 /* Enable side panel */
 function enableSidePanel() {
