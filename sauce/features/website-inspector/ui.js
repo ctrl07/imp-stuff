@@ -1,11 +1,21 @@
-const frame = document.getElementById("panel-frame");
+document.addEventListener("DOMContentLoaded", () => {
+  const frame = document.getElementById("panel-frame");
 
-document.querySelectorAll("button[data-page]").forEach(button => {
-  button.addEventListener("click", () => {
-    const target = button.dataset.page;
+  if (!frame) {
+    console.warn("Panel frame not found");
+    return;
+  }
 
-    if (!frame || !target) return;
+  document.querySelectorAll("button[data-page]").forEach(button => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.page;
 
-    frame.src = target;
+      if (!target) return;
+
+      // Avoid unnecessary reloads
+      if (!frame.src.endsWith(target)) {
+        frame.src = target;
+      }
+    });
   });
 });

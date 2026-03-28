@@ -21,6 +21,7 @@ function renderAll(data) {
   renderGeo(data.schema);
   renderSocial(data.schema);
   renderAnalytics(data.analytics);
+  renderSlugs(data.slugs);
 }
 
 /* Render Helpers */
@@ -125,32 +126,36 @@ function renderEmpty(container) {
 }
 
 /* Copy Slug Logic */
-const copySlugsBtn = document.getElementById("copy-slugs");
-const dialog = document.getElementById("slug-dialog");
-const textarea = document.getElementById("slug-text");
-const copyBtn = document.getElementById("copy-slug-text");
-const closeBtn = document.getElementById("close-slug-dialog");
-
 let currentSlugs = [];
 
 function renderSlugs(slugs = []) {
   currentSlugs = slugs;
 }
 
-copySlugsBtn.addEventListener("click", () => {
-  if (!currentSlugs.length) {
-    alert("No slugs found. Refresh data first.");
-    return;
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  const copySlugsBtn = document.getElementById("copy-slugs");
+  const dialog = document.getElementById("slug-dialog");
+  const textarea = document.getElementById("slug-text");
+  const copyBtn = document.getElementById("copy-slug-text");
+  const closeBtn = document.getElementById("close-slug-dialog");
 
-  textarea.value = currentSlugs.join("\n");
-  dialog.showModal();
-});
+  if (!copySlugsBtn) return;
 
-copyBtn.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(textarea.value);
-});
+  copySlugsBtn.addEventListener("click", () => {
+    if (!currentSlugs.length) {
+      alert("No slugs found. Refresh data first.");
+      return;
+    }
 
-closeBtn.addEventListener("click", () => {
-  dialog.close();
+    textarea.value = currentSlugs.join("\n");
+    dialog.showModal();
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(textarea.value);
+  });
+
+  closeBtn.addEventListener("click", () => {
+    dialog.close();
+  });
 });
