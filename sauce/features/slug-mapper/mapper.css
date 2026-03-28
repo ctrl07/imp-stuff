@@ -1,20 +1,9 @@
-.slug-mapper {
-  padding: 1rem;
-}
+.slug-mapper { padding: 1rem; }
 
 .header {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.title {
-  flex: 1;
-}
-
-.hint {
-  font-size: 0.85rem;
-  color: #666;
 }
 
 .top-inputs {
@@ -23,13 +12,9 @@
 }
 
 .input-box {
+  width: 220px;
   display: flex;
   flex-direction: column;
-  width: 220px;
-}
-
-.input-box textarea {
-  min-height: 60px;
 }
 
 .workspace {
@@ -37,15 +22,6 @@
   grid-template-columns: 2fr 1fr;
   gap: 1rem;
   margin-top: 1rem;
-}
-
-.from-panel {
-  border-right: 1px solid #ddd;
-  padding-right: 1rem;
-}
-
-.actions {
-  margin-bottom: 0.5rem;
 }
 
 .from-row {
@@ -63,25 +39,26 @@
 .from-to {
   border: 1px dashed #ccc;
   padding: 4px;
-  min-height: 24px;
 }
 
-.to-panel {
-  padding-left: 0.5rem;
+.from-to input {
+  width: 100%;
 }
 
 .to-card {
   border: 1px solid #ccc;
-  border-radius: 4px;
   padding: 6px;
-  margin-bottom: 6px;
-  background: #fafafa;
-  cursor: grab;
-  user-select: none;
+  margin-bottom: 4px;
 }
 
-.to-card:active {
-  cursor: grabbing;
+.to-card.active {
+  background: #e8f0ff;
+  border-color: #5588ff;
+}
+
+.to-panel input {
+  width: 100%;
+  margin-bottom: 6px;
 }
 
 dialog textarea {

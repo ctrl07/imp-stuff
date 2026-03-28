@@ -1,177 +1,209 @@
-console.log("[SlugMapper] Script loaded");
+const fromInput = document.getElementById("fromInput");
+const toInput = document.getElementById("toInput");
+const stashSearch = document.getElementById("stashSearch");
+const fromTable = document.getElementById("fromTable");
+const toStashEl = document.getElementById("toStash");
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("[SlugMapper] DOMContentLoaded fired");
+const csvDialog = document.getElementById("csvDialog");
+const csvOutput = document.getElementById("csvOutput");
 
-  // DOM LOOKUPS
-  const fromTable = document.getElementById("fromTable");
-  const fromInput = document.getElementById("fromInput");
-  const toInput = document.getElementById("toInput");
-  const toStashEl = document.getElementById("toStash");
+let fromRows = [];
+let toStash = [];
+let activeFromIndex = null;
+let activeStashIndex = 0;
 
-  const loadFromBtn = document.getElementById("loadFrom");
-  const loadToBtn = document.getElementById("loadTo");
+/* Load Inputs */
 
-  const previewBtn = document.getElementById("previewCsv");
-  const exportBtn = document.getElementById("exportCsv");
+document.getElementById("loadFrom").onclick = () => {
+  fromInput.value
+    .split("\n")
+    .map(v => v.trim())
+    .filter(Boolean)
+    .forEach(v => fromRows.push({ from: v, to: "" }));
 
-  const csvDialog = document.getElementById("csvDialog");
-  const csvOutput = document.getElementById("csvOutput");
+  fromInput.value = "";
+  if (activeFromIndex === null) activeFromIndex = 0;
+  renderFromRows();
+};
 
-  console.log("[SlugMapper] DOM elements:", {
-    fromTable,
-    fromInput,
-    toInput,
-    toStashEl,
-    loadFromBtn,
-    loadToBtn,
-    previewBtn,
-    exportBtn,
-    csvDialog,
-    csvOutput
-  });
+document.getElementById("loadTo").onclick = () => {
+  toInput.value
+    .split("\n")
+    .map(v => v.trim())
+    .filter(Boolean)
+    .forEach(v => toStash.push(v));
 
-  // STATE
-  let fromRows = [];
-  let toStash = [];
+  toInput.value = "";
+  activeStashIndex = 0;
+  renderToStash();
+};
 
-  // SAFETY CHECK
-  if (!fromTable || !fromInput || !toInput || !toStashEl) {
-    console.error("[SlugMapper] Critical DOM elements missing. JS will not run.");
-    return;
-  }
+/* Render From Rows */
 
-  // LOAD FROM URLS
-  loadFromBtn.onclick = () => {
-    console.log("[SlugMapper] loadFrom clicked");
-    console.log("[SlugMapper] raw fromInput value:", fromInput.value);
+function renderFromRows() {
+  fromTable.innerHTML = "";
 
-    const values = fromInput.value
-      .split("\n")
-      .map(v => v.trim())
-      .filter(Boolean);
+  fromRows.forEach((row, i) => {
+    const div = document.createElement("div");
+    div.className =
+      "from-row" +
+      (row.to ? "" : " unmapped") +
+      (i === activeFromIndex ? " active" : "");
 
-    console.log("[SlugMapper] parsed From values:", values);
+    const num = document.createElement("div");
+    num.textContent = i + 1;
 
-    values.forEach(v => {
-      fromRows.push({
-        id: crypto.randomUUID(),
-        from: v,
-        to: null
-      });
-    });
+    const fromCell = document.createElement("div");
+    fromCell.contentEditable = true;
+    fromCell.textContent = row.from;
+    fromCell.oninput = e => row.from = e.target.textContent;
 
-    console.log("[SlugMapper] fromRows state after load:", fromRows);
+    const toCell = document.createElement("div");
+    toCell.className = "from-to";
+    toCell.ondragover = e => e.preventDefault();
 
-    fromInput.value = "";
-    renderFromRows();
-  };
+    const input = document.createElement("input");
+    input.value = row.to;
+    input.placeholder = "Assign To slug";
 
-  // LOAD TO SLUGS
-  loadToBtn.onclick = () => {
-    console.log("[SlugMapper] loadTo clicked");
-    console.log("[SlugMapper] raw toInput value:", toInput.value);
+    input.onfocus = () => {
+      activeFromIndex = i;
+      renderFromRows();
+    };
 
-    const values = toInput.value
-      .split("\n")
-      .map(v => v.trim())
-      .filter(Boolean);
-
-    console.log("[SlugMapper] parsed To values:", values);
-
-    values.forEach(v => {
-      toStash.push({
-        id: crypto.randomUUID(),
-        slug: v
-      });
-    });
-
-    console.log("[SlugMapper] toStash state after load:", toStash);
-
-    toInput.value = "";
-    renderToStash();
-  };
-
-  // RENDER FROM ROWS
-  function renderFromRows() {
-    console.log("[SlugMapper] renderFromRows called");
-    console.log("[SlugMapper] rendering rows:", fromRows);
-
-    fromTable.innerHTML = "";
-
-    fromRows.forEach((row, index) => {
-      const div = document.createElement("div");
-      div.className = "from-row" + (row.to ? "" : " unmapped");
-
-      const num = document.createElement("div");
-      num.textContent = index + 1;
-
-      const fromCell = document.createElement("div");
-      fromCell.textContent = row.from;
-
-      const toCell = document.createElement("div");
-      toCell.className = "from-to";
-      toCell.textContent = row.to || "Drop To slug here";
-
-      toCell.ondragover = e => e.preventDefault();
-
-      toCell.ondrop = e => {
-        const slug = e.dataTransfer.getData("text/plain");
-        console.log("[SlugMapper] dropped slug:", slug);
-        row.to = slug;
+    input.onkeydown = e => {
+      if (e.key === "ArrowDown" && i < fromRows.length - 1) {
+        activeFromIndex++;
         renderFromRows();
-      };
+        focusActiveTo();
+        e.preventDefault();
+      }
+      if (e.key === "ArrowUp" && i > 0) {
+        activeFromIndex--;
+        renderFromRows();
+        focusActiveTo();
+        e.preventDefault();
+      }
+      if (e.key === "Tab") {
+        stashSearch.focus();
+        e.preventDefault();
+      }
+    };
 
-      div.append(num, fromCell, toCell);
-      fromTable.appendChild(div);
-    });
+    input.oninput = e => row.to = e.target.value;
+
+    toCell.ondrop = e => {
+      const slug = e.dataTransfer.getData("text/plain");
+      assignToActive(slug);
+    };
+
+    toCell.appendChild(input);
+    div.append(num, fromCell, toCell);
+    fromTable.appendChild(div);
+  });
+}
+
+function focusActiveTo() {
+  const inputs = fromTable.querySelectorAll(".from-to input");
+  if (inputs[activeFromIndex]) inputs[activeFromIndex].focus();
+}
+
+/*  Stash Search + Keyboard */
+
+stashSearch.oninput = () => {
+  activeStashIndex = 0;
+  renderToStash();
+};
+
+stashSearch.onkeydown = e => {
+  const matches = getFilteredStash();
+  if (!matches.length || activeFromIndex === null) return;
+
+  if (e.key === "ArrowDown") {
+    activeStashIndex = (activeStashIndex + 1) % matches.length;
+    renderToStash(true);
+    e.preventDefault();
   }
 
-  // RENDER TO STASH
-  function renderToStash() {
-    console.log("[SlugMapper] renderToStash called");
-    console.log("[SlugMapper] rendering toStash:", toStash);
-
-    toStashEl.innerHTML = "";
-
-    toStash.forEach(item => {
-      const card = document.createElement("div");
-      card.className = "to-card";
-      card.textContent = item.slug;
-      card.draggable = true;
-
-      card.ondragstart = e => {
-        console.log("[SlugMapper] dragstart slug:", item.slug);
-        e.dataTransfer.setData("text/plain", item.slug);
-      };
-
-      toStashEl.appendChild(card);
-    });
+  if (e.key === "ArrowUp") {
+    activeStashIndex =
+      (activeStashIndex - 1 + matches.length) % matches.length;
+    renderToStash(true);
+    e.preventDefault();
   }
 
-  // CSV
-  previewBtn.onclick = () => {
-    console.log("[SlugMapper] Preview CSV clicked");
-    csvOutput.value = buildCSV();
-    csvDialog.showModal();
-  };
+  if (e.key === "Enter") {
+    assignToActive(matches[activeStashIndex]);
+    e.preventDefault();
+  }
+};
 
-  exportBtn.onclick = () => {
-    console.log("[SlugMapper] Export CSV clicked");
-    const blob = new Blob([buildCSV()], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "slug-mapping.csv";
-    a.click();
-  };
+/* Assign + Auto Advance */
 
-  function buildCSV() {
-    console.log("[SlugMapper] buildCSV called");
-    return [
-      "From,To",
-      ...fromRows.map(r => `"${r.from}","${r.to || ""}"`)
-    ].join("\n");
+function assignToActive(slug) {
+  fromRows[activeFromIndex].to = slug;
+
+  if (activeFromIndex < fromRows.length - 1) {
+    activeFromIndex++;
+    renderFromRows();
+    focusActiveTo();
+  } else {
+    renderFromRows();
   }
 
-  console.log("[SlugMapper] Initialization complete");
-});
+  stashSearch.focus();
+}
+
+/* Render To Stash */
+
+function getFilteredStash() {
+  const q = stashSearch.value.trim();
+  return q ? toStash.filter(s => s.includes(q)) : toStash;
+}
+
+function renderToStash(scrollActive = false) {
+  const filtered = getFilteredStash();
+  toStashEl.innerHTML = "";
+
+  filtered.forEach((slug, i) => {
+    const div = document.createElement("div");
+    div.className =
+      "to-card" + (i === activeStashIndex ? " active" : "");
+    div.textContent = slug;
+    div.draggable = true;
+
+    div.ondragstart = e => {
+      e.dataTransfer.setData("text/plain", slug);
+    };
+
+    div.onclick = () => assignToActive(slug);
+
+    toStashEl.appendChild(div);
+
+    if (scrollActive && i === activeStashIndex) {
+      div.scrollIntoView({ block: "nearest" });
+    }
+  });
+}
+
+/* CSV */
+
+document.getElementById("previewCsv").onclick = () => {
+  csvOutput.value = buildCSV();
+  csvDialog.showModal();
+};
+
+document.getElementById("exportCsv").onclick = () => {
+  const blob = new Blob([buildCSV()], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "url-redirects.csv";
+  a.click();
+};
+
+function buildCSV() {
+  return [
+    "From,To",
+    ...fromRows.map(r => `"${r.from}","${r.to}"`)
+  ].join("\n");
+}

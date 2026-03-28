@@ -2,66 +2,60 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>URL Redirects Helper</title>
+  <title>URL Redirects</title>
 
   <link rel="stylesheet" href="../../styles/styles.css">
   <link rel="stylesheet" href="./mapper.css">
 </head>
 
 <body>
-  <main class="slug-mapper">
+<main class="slug-mapper">
 
-    <!-- Header -->
-    <header class="header">
-      <div class="title">
-        <h2>URL Redirects Helper</h2>
-        <p class="hint">Interaction driven redirect mapping</p>
+  <header class="header">
+    <div>
+      <h2>URL Redirects</h2>
+    </div>
+
+    <div class="top-inputs">
+      <div class="input-box">
+        <label>From URLs</label>
+        <textarea id="fromInput"></textarea>
+        <button id="loadFrom">Load</button>
       </div>
 
-      <div class="top-inputs">
-        <div class="input-box">
-          <label>From URLs</label>
-          <textarea id="fromInput"></textarea>
-          <button id="loadFrom">Load</button>
-        </div>
-
-        <div class="input-box">
-          <label>To Slugs</label>
-          <textarea id="toInput"></textarea>
-          <button id="loadTo">Load</button>
-        </div>
+      <div class="input-box">
+        <label>To Slugs</label>
+        <textarea id="toInput"></textarea>
+        <button id="loadTo">Load</button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Workspace -->
-    <section class="workspace">
+  <section class="workspace">
 
-      <!-- From rows -->
-      <section class="from-panel">
-        <div class="actions">
-          <button id="previewCsv">Preview CSV</button>
-          <button id="exportCsv">Export CSV</button>
-        </div>
-
-        <div id="fromTable"></div>
-      </section>
-
-      <!-- To stash -->
-      <aside class="to-panel">
-        <h4>To Slug Stash</h4>
-        <div id="toStash"></div>
-      </aside>
-
+    <section class="from-panel">
+      <div class="actions">
+        <button id="previewCsv">Preview CSV</button>
+        <button id="exportCsv">Export CSV</button>
+      </div>
+      <div id="fromTable"></div>
     </section>
 
-    <!-- CSV Preview -->
-    <dialog id="csvDialog">
-      <textarea id="csvOutput" readonly></textarea>
-      <button onclick="csvDialog.close()">Close</button>
-    </dialog>
+    <aside class="to-panel">
+      <h4>Search CMS Slugs</h4>
+      <input id="stashSearch" placeholder="Search To slugs…" />
+      <div id="toStash"></div>
+    </aside>
 
-  </main>
+  </section>
 
-  <script src="./mapper.js"></script>
+  <dialog id="csvDialog">
+    <textarea id="csvOutput" readonly></textarea>
+    <button onclick="csvDialog.close()">Close</button>
+  </dialog>
+
+</main>
+
+<script type="module" src="./mapper.js"></script>
 </body>
 </html>
