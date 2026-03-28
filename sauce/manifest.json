@@ -31,7 +31,7 @@
   },
 
   "side_panel": {
-    "default_path": "features/view-current-page/index.html"
+    "default_path": "features/website-inspector/index.html"
   },
 
   "commands": {

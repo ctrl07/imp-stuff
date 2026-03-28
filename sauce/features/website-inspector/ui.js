@@ -7,3 +7,11 @@ document.getElementById("refresh-data").addEventListener("click", async () => {
 
   renderAll(data);
 });
+
+const frame = document.getElementById("panel-frame");
+
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    frame.src = btn.dataset.page;
+  });
+});
