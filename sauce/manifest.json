@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Imp Stuff",
-  "version": "0.0.1",
-  "description": "wip",
+  "version": "0.5.0",
+  "description": "Feel free to share any feedback!",
 
   "permissions": [
     "contextMenus",
