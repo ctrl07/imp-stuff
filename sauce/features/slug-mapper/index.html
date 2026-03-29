@@ -70,11 +70,14 @@
 
   </section>
 
-  <dialog id="csvDialog">
-    <textarea id="csvOutput" readonly></textarea>
-    <button onclick="csvDialog.close()">Close</button>
-  </dialog>
+<dialog id="csvDialog" class="csv-dialog">
+  <div class="dialog-header">
+    <h3>CSV Preview</h3>
+    <button id="closeCsv" aria-label="Close">✕</button>
+  </div>
 
+  <textarea id="csvOutput" readonly></textarea>
+</dialog>
 </main>
 
 <script type="module" src="./mapper.js"></script>

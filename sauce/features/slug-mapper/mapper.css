@@ -65,3 +65,51 @@ dialog textarea {
   width: 100%;
   height: 300px;
 }
+
+.csv-dialog {
+  width: min(90vw, 900px);
+  max-width: 90vw;
+  height: min(80vh, 700px);
+  max-height: 80vh;
+
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+
+  resize: both;
+  overflow: auto;
+}
+
+.csv-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* Header layout */
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 8px 10px;
+  border-bottom: 1px solid #ddd;
+  background: #f7f7f7;
+}
+
+/* Close button */
+.dialog-header button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* CSV content */
+#csvOutput {
+  width: 100%;
+  height: calc(100% - 40px);
+  box-sizing: border-box;
+  padding: 10px;
+  border: none;
+  resize: none;
+  font-family: monospace;
+}
