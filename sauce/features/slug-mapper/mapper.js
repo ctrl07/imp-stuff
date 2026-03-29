@@ -7,6 +7,11 @@ const toStashEl = document.getElementById("toStash");
 const csvDialog = document.getElementById("csvDialog");
 const csvOutput = document.getElementById("csvOutput");
 
+const hostnameInput = document.getElementById("hostnameInput");
+const addWWWCheckbox = document.getElementById("addWWW");
+const is301Checkbox = document.getElementById("is301");
+const expirationInput = document.getElementById("expiration");
+
 let fromRows = [];
 let toStash = [];
 let activeFromIndex = null;
@@ -202,8 +207,15 @@ document.getElementById("exportCsv").onclick = () => {
 };
 
 function buildCSV() {
+  const hostname = hostnameInput.value.trim();
+  const addWWW = addWWWCheckbox.checked ? "TRUE" : "FALSE";
+  const is301 = is301Checkbox.checked ? "TRUE" : "FALSE";
+  const expiration = expirationInput.value || "0";
+
   return [
-    "From,To",
-    ...fromRows.map(r => `"${r.from}","${r.to}"`)
+    "Hostname,From,To,Add WWW,Is 301?,Expiration",
+    ...fromRows.map(row =>
+      `"${hostname}","${row.from}","${row.to}","${addWWW}","${is301}","${expiration}"`
+    )
   ].join("\n");
 }
