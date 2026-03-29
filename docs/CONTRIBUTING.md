@@ -2,6 +2,8 @@
 
 This project welcomes non-programmer contributions.
 
+Current contributors: Our Coach, Mamta and Poonam.
+
 You can safely contribute by:
 - Adding documentation
 - Improving UI text
