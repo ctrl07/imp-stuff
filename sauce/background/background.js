@@ -3,6 +3,7 @@ import { detectProvider } from "./utils/providerUtils.js";
 import { normalizeSchema } from "./utils/schemaUtils.js";
 import { registerVehicleMenus, resolveVehicleMenuText } from "./menus/vehicleMenus.js";
 
+/* Menus */
 
 function initMenus() {
   registerVehicleMenus();
@@ -23,13 +24,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   });
 });
 
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.action === "insertText") {
-    insertText(lastFocusedElement, msg.text);
-  }
-});
-
-/* Enable side panel */
+/* Side Panel */
 function enableSidePanel() {
   chrome.sidePanel.setPanelBehavior({
     openPanelOnActionClick: true
@@ -40,36 +35,47 @@ chrome.runtime.onInstalled.addListener(enableSidePanel);
 chrome.runtime.onStartup.addListener(enableSidePanel);
 
 /* Website Inspector */
-chrome.runtime.onMessage.addListener(async (msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "RUN_WEBSITE_INSPECTION") {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true
-    });
+    (async () => {
+      try {
+        const [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true
+        });
 
-    if (!tab?.id) {
-      throw new Error("No active tab found");
-    }
+        if (!tab?.id) {
+          throw new Error("No active tab found");
+        }
 
-    const pageData = await chrome.tabs.sendMessage(tab.id, {
-      type: "INSPECT_WEBSITE"
-    });
+        const pageData = await chrome.tabs.sendMessage(tab.id, {
+          type: "INSPECT_WEBSITE"
+        });
 
-    return {
-      url: pageData.url,
-      meta: {
-        title: pageData.title,
-        description: pageData.description
-      },
-      provider: detectProvider(
-        pageData.schemaNodes,
-        pageData.links,
-        pageData.scriptSrcs
-      ),
-      schema: normalizeSchema(pageData.schemaNodes),
-      analytics: extractAnalyticsCodes(pageData.scriptSrcs),
-      slugs: pageData.slugs
-    };
+        sendResponse({
+          url: pageData.url,
+          meta: {
+            title: pageData.title,
+            description: pageData.description
+          },
+          provider: detectProvider(
+            pageData.schemaNodes,
+            pageData.links,
+            pageData.scriptSrcs
+          ),
+          schema: normalizeSchema(pageData.schemaNodes),
+          analytics: extractAnalyticsCodes(pageData.scriptSrcs),
+          slugs: pageData.slugs,
+          scriptSrcs: pageData.scriptSrcs,
+          links: pageData.links
+        });
+      } catch (err) {
+        console.error("Website inspection failed:", err);
+        sendResponse({ error: err.message || String(err) });
+      }
+    })();
+
+    return true; // required for async responses
   }
 });
 

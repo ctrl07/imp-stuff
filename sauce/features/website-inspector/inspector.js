@@ -7,6 +7,12 @@ document.addEventListener("DOMContentLoaded", () => {
       type: "RUN_WEBSITE_INSPECTION"
     });
 
+    if (data?.error) {
+      console.warn("Inspector error:", data.error);
+      return;
+    }
+
+    window.__lastInspection = data;
     renderAll(data);
   });
 });
@@ -22,9 +28,12 @@ function renderAll(data) {
   renderSocial(data.schema);
   renderAnalytics(data.analytics);
   renderSlugs(data.slugs);
+  renderSchema(data.schema);
+  renderList("script-list", data.scriptSrcs);
+  renderList("link-list", data.links);
 }
 
-/* Render Helpers */
+/* Section Renderers */
 function renderURL(url) {
   const el = document.getElementById("url-info");
   el.innerHTML = "";
@@ -34,7 +43,6 @@ function renderURL(url) {
 function renderProvider(provider) {
   const el = document.getElementById("provider-info");
   el.innerHTML = "";
-
   if (!provider?.name) return renderEmpty(el);
 
   const div = document.createElement("div");
@@ -46,7 +54,6 @@ function renderProvider(provider) {
 function renderMeta(meta) {
   const el = document.getElementById("meta-info");
   el.innerHTML = "";
-
   if (!meta?.title && !meta?.description) return renderEmpty(el);
   if (meta.title) renderLabeled(el, "Title", meta.title);
   if (meta.description) renderLabeled(el, "Description", meta.description);
@@ -57,7 +64,6 @@ function renderAddress(schema) {
   el.innerHTML = "";
 
   const a = schema?.address || {};
-
   const text = [
     a.street,
     a.city && `${a.city}, ${a.state} ${a.zip}`,
@@ -71,8 +77,7 @@ function renderGeo(schema) {
   const el = document.getElementById("geo-info");
   el.innerHTML = "";
 
-  if (!schema?.geo?.lat || !schema?.geo?.lng)
-    return renderEmpty(el);
+  if (!schema?.geo?.lat || !schema?.geo?.lng) return renderEmpty(el);
 
   renderLabeled(el, "Latitude", schema.geo.lat);
   renderLabeled(el, "Longitude", schema.geo.lng);
@@ -83,7 +88,6 @@ function renderSocial(schema) {
   el.innerHTML = "";
 
   if (!schema?.social?.length) return renderEmpty(el);
-
   schema.social.forEach(url => renderValue(el, url));
 }
 
@@ -101,7 +105,36 @@ function renderAnalytics(codes) {
   codes.gtm?.forEach(v => renderLabeled(el, "GTM", v));
 }
 
-/*  UI Helpers */
+/* Schema / Lists */
+
+function renderSchema(schema) {
+  const el = document.getElementById("schema-info");
+  el.innerHTML = "";
+
+  if (!schema || typeof schema !== "object") {
+    return renderEmpty(el);
+  }
+
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(schema, null, 2);
+  pre.style.whiteSpace = "pre-wrap";
+  pre.style.wordBreak = "break-word";
+  el.appendChild(pre);
+}
+
+function renderList(containerId, list = []) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+
+  if (!Array.isArray(list) || !list.length) {
+    return renderEmpty(el);
+  }
+
+  list.forEach(item => renderValue(el, item));
+}
+
+/* UI Helpers  */
+
 function renderValue(container, value) {
   const div = document.createElement("div");
   div.className = "detail";
@@ -125,7 +158,7 @@ function renderEmpty(container) {
   container.appendChild(div);
 }
 
-/* Copy Slug Logic */
+/* Slug Dialog */
 let currentSlugs = [];
 
 function renderSlugs(slugs = []) {
@@ -133,29 +166,56 @@ function renderSlugs(slugs = []) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const copySlugsBtn = document.getElementById("copy-slugs");
   const dialog = document.getElementById("slug-dialog");
   const textarea = document.getElementById("slug-text");
-  const copyBtn = document.getElementById("copy-slug-text");
-  const closeBtn = document.getElementById("close-slug-dialog");
 
-  if (!copySlugsBtn) return;
-
-  copySlugsBtn.addEventListener("click", () => {
+  document.getElementById("copy-slugs")?.addEventListener("click", () => {
     if (!currentSlugs.length) {
       alert("No slugs found. Refresh data first.");
       return;
     }
-
     textarea.value = currentSlugs.join("\n");
     dialog.showModal();
   });
 
-  copyBtn.addEventListener("click", async () => {
-    await navigator.clipboard.writeText(textarea.value);
+  document.getElementById("copy-slug-text")?.addEventListener("click", () => {
+    navigator.clipboard.writeText(textarea.value);
   });
 
-  closeBtn.addEventListener("click", () => {
+  document.getElementById("close-slug-dialog")?.addEventListener("click", () => {
     dialog.close();
+  });
+
+  /* Copy / Download helpers */
+  document.getElementById("copy-schema-json")?.addEventListener("click", () => {
+    const data = window.__lastInspection?.schema;
+    if (data) {
+      navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    }
+  });
+
+  document.getElementById("download-schema-json")?.addEventListener("click", () => {
+    const data = window.__lastInspection?.schema;
+    if (!data) return;
+
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/json" }
+    );
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "schema.json";
+    a.click();
+  });
+
+  document.getElementById("copy-scripts")?.addEventListener("click", () => {
+    const list = window.__lastInspection?.scriptSrcs || [];
+    if (list.length) navigator.clipboard.writeText(list.join("\n"));
+  });
+
+  document.getElementById("copy-links")?.addEventListener("click", () => {
+    const list = window.__lastInspection?.links || [];
+    if (list.length) navigator.clipboard.writeText(list.join("\n"));
   });
 });
