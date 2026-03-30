@@ -11,7 +11,7 @@ export function registerVehicleMenus() {
       ["filter", "Filter"],
       ["dealer", "Dealer Alt"],
       ["re-codes", "Replacement Codes"],
-      ["css", "CSS Snippets"]
+      // ["css", "CSS Snippets"]
     ];
 
     primaryMenus.forEach(([id, title]) => {
