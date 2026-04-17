@@ -1,0 +1,8 @@
+wayback.db
+wayback.db-shm
+wayback.db-wal
+screens/
+__pycache__/
+*.pyc
+.env
+extension/wayback-panel.zip
