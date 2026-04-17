@@ -2,12 +2,13 @@
 
 ## Purpose
 
-Single-user V2 backend for the "Imp Stuff" Chrome extension Wayback tab.
-Decoupled from the V1 server-capture pipeline (`../backend-ref/`).
+Pluggable backend for the "Imp Stuff" Chrome extension. The extension has three job types today:
 
-The extension executes captures client-side via `chrome.debugger` (CDP).
-PDFs are stored in the extension's IndexedDB. The backend tracks job state
-and receives lightweight result metadata (URL + filename, no PDF bytes).
+- **Capture (Wayback tab)** — full-page PDF via `chrome.debugger` (CDP); stored in IndexedDB
+- **Scrape (Scrape tab)** — DOM extraction (title, H1, links, text) via `chrome.scripting.executeScript`; no CDP, no banner
+- **Inspect (Inspector tab)** — live page analysis (provider detection, analytics, phones); no backend needed
+
+The backend tracks job state and receives lightweight result metadata. PDFs never leave the browser.
 
 ---
 
@@ -19,20 +20,23 @@ ext-backend/
 ├── ext_api.py           # APIRouter(prefix="/v2") — all V2 endpoints
 ├── shared.py            # Paths, config, DB helpers (WAL mode), auth — no endpoints
 ├── run.py               # Launcher — Windows ProactorEventLoop + Cloudflare tunnel (port 8081)
-├── pyproject.toml       # Dependencies: fastapi, uvicorn, pypdf, pycloudflared (no pychrome)
+├── pyproject.toml       # Dependencies: fastapi, uvicorn, pypdf, pycloudflared
 ├── extension/           # Chrome extension ("Imp Stuff") — load unpacked from chrome://extensions
-│   ├── manifest.json    # MV3; permissions: webRequest, tabs, contextMenus, storage, sidePanel, commands, debugger, alarms, unlimitedStorage, downloads
-│   ├── background.js    # Service worker — WB_CAPTURE_TAB, WB_EXECUTE_CAPTURE_URL, RUN_WEBSITE_INSPECTION; keepalive port listener
-│   ├── panel.html       # Side panel shell — Inspector / URL Tools / Wayback tabs
-│   ├── panel.js         # Inspector UI + URL Tools tab + sitemap crawler + tab switching
-│   ├── content.js       # Injected at document_start; responds to SNAPSHOT and INSERT_TEXT messages
-│   ├── rules.js         # URL routing/category pattern rules for dealer pages (SRP/VDP/specials by provider); used by URL Tools tab
-│   ├── url-tool.js      # Pure pipeline functions (ut_cleanUrls, ut_classifyAll, ut_matchRedirects, etc.); depends on rules.js
+│   ├── manifest.json    # MV3; permissions: webRequest, tabs, contextMenus, storage, sidePanel,
+│   │                    #   commands, debugger, scripting, alarms, unlimitedStorage, downloads
+│   │                    #   host_permissions: <all_urls>
+│   ├── background.js    # Service worker — message handlers, CDP capture helpers, scripting scrape
+│   ├── panel.html       # Side panel shell — Inspector / URL Tools / Wayback / Scrape tabs
+│   ├── panel.js         # Inspector UI + URL Tools tab + sitemap crawler + initTabs()
+│   ├── content.js       # Injected at document_start; responds to SNAPSHOT and INSERT_TEXT
+│   ├── rules.js         # URL routing/category pattern rules (dealer pages) — URL Tools tab
+│   ├── url-tool.js      # Pure pipeline functions (ut_cleanUrls, ut_classifyAll, etc.)
 │   ├── wayback-db.js    # IndexedDB wrapper (store: captures)
-│   ├── wayback-panel.js # Wayback tab UI controller
+│   ├── wayback-panel.js # Wayback tab UI; global API config + backend health dot
+│   ├── scrape-panel.js  # Scrape tab UI; BFS crawler, concurrency pool, results table
 │   └── pico.min.css     # Base CSS (Pico v2 dark theme)
 ├── wayback.db           # SQLite job history (created at runtime, gitignored)
-└── screens/             # Captured PDFs if uploaded server-side (created at runtime, gitignored)
+└── screens/             # Server-side PDFs (created at runtime, gitignored; rarely populated)
 ```
 
 ---
@@ -43,64 +47,103 @@ ext-backend/
 uv run python run.py
 ```
 
-Server starts on **port 8081**. API key printed on every startup when `WAYBACK_API_KEY` env var is not set — set it to persist the same key across restarts.
+Server starts on **port 8081**. `WAYBACK_API_KEY` env var pins the key across restarts; if unset, a random key is printed on every startup.
 
 Load the extension: `chrome://extensions` → Developer mode → Load unpacked → select `extension/`  
-Open side panel: **Ctrl+Shift+S**  
-Set backend URL to `http://127.0.0.1:8081` in the Wayback tab's Backend API section.
+Open side panel: **Ctrl+Shift+S**
+
+To silence the CDP debugging banner for capture jobs, launch Chrome with:
+```
+chrome.exe --silent-debugger-extension-api
+```
 
 ---
 
 ## API Endpoints
 
-All V2 endpoints are under `/v2`. The root `/health` is also exposed (extension calls this for the status badge).
+All V2 endpoints are under `/v2`. Auth = `X-API-Key` header.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/health` | — | Liveness + Chrome reachability |
-| `GET` | `/v2/health` | — | Same as above (V2 alias) |
-| `POST` | `/v2/capture` | ✅ | Submit job → `{job_id, status}` (202); extension claims and executes |
-| `GET` | `/v2/jobs?status=queued` | — | List jobs; `?status=queued` returns oldest first |
+| `GET` | `/health` | — | Liveness check |
+| `GET` | `/v2/health` | — | Same (V2 alias) |
+| `POST` | `/v2/capture` | ✅ | Submit PDF capture job → `{job_id, status: queued}` |
+| `POST` | `/v2/scrape` | ✅ | Submit scrape/crawl job → `{job_id, status: queued}` |
+| `GET` | `/v2/jobs` | — | List jobs (`?status=queued` oldest-first for polling) |
 | `GET` | `/v2/jobs/{job_id}` | — | Job status + results |
 | `POST` | `/v2/jobs/{job_id}/claim` | ✅ | Atomically claim a queued job (409 if already claimed) |
-| `POST` | `/v2/jobs/{job_id}/result` | ✅ | Post one URL result (URL + filename metadata, no PDF bytes); returns `{ok, filename, file_url}` |
-| `DELETE` | `/v2/jobs/{job_id}` | ✅ | Cancel active or delete terminal job + any server-side PDFs |
-| `GET` | `/files/{filename}` | — | Serve PDFs from `screens/` (only populated if `pdf_data` is explicitly sent) |
-
-### Authentication
-
-Write endpoints require `X-API-Key` header. Key read from `WAYBACK_API_KEY` env var; generated and printed on every startup if unset.
+| `POST` | `/v2/jobs/{job_id}/result` | ✅ | Post one capture result `{url, filename, error}` |
+| `POST` | `/v2/jobs/{job_id}/scrape-result` | ✅ | Post one scrape result `{url, title, h1, links, text_preview, error}` |
+| `POST` | `/v2/jobs/{job_id}/finish` | ✅ | Mark crawl job done (used when total URL count is unknown upfront) |
+| `DELETE` | `/v2/jobs/{job_id}` | ✅ | Cancel or delete job + any server-side PDFs |
+| `GET` | `/files/{filename}` | — | Serve PDFs from `screens/` |
 
 ---
 
-## How extension capture works
+## Job flow (all types)
+
+```
+POST /v2/{capture|scrape}  →  job_id (queued)
+POST /v2/jobs/{id}/claim   →  settings + url list (running)
+POST /v2/jobs/{id}/result  →  per-URL result (auto-closes when url_count reached)
+   OR
+POST /v2/jobs/{id}/finish  →  explicit close (crawl mode, unknown count)
+```
+
+`source` column in DB: `'v2'` for capture, `'scrape'` for scrape/crawl.
+
+---
+
+## How PDF capture works
 
 ### Standalone mode (no backend)
-1. User clicks **Capture this page** in the Wayback tab
-2. `wayback-panel.js` sends `{ type: 'WB_CAPTURE_TAB' }` to the service worker
-3. `background.js` attaches `chrome.debugger` to the active tab
-4. CDP: `setDeviceMetricsOverride` → scroll loop → settle delay → CSS injection → measure height → `Page.printToPDF`
-5. Service worker returns `pdfBase64` (raw string — `atob()` unavailable in MV3 service workers)
-6. Panel converts base64 → Blob using `atob()` (available in panel page context)
-7. Stored in IndexedDB via `wayback-db.js`
+1. User clicks **Capture this page**
+2. `wayback-panel.js` → `{ type: 'WB_CAPTURE_TAB' }` → service worker
+3. `background.js` attaches `chrome.debugger` to active tab
+4. CDP: `setDeviceMetricsOverride` → scroll loop → settle delay → CSS injection → `Page.printToPDF`
+5. `pdfBase64` returned; panel converts → Blob → IndexedDB
 
-### Backend mode (requires this server)
-1. User pastes URLs → **Submit bulk job** → `POST /v2/capture` → `job_id`
-2. Panel opens a `chrome.runtime.connect('wb-keepalive')` port to keep the service worker alive
-3. Panel claims via `POST /v2/jobs/{job_id}/claim` → receives settings + URL list
-4. For each URL: `{ type: 'WB_EXECUTE_CAPTURE_URL', url, settings }` → service worker opens background tab, captures, closes tab
-5. Panel generates filename locally (`wbCreateCaptureFilename`), posts `{ url, filename }` to `POST /v2/jobs/{job_id}/result` (no PDF bytes — avoids Cloudflare tunnel timeouts on large files)
-6. PDF stored in IndexedDB locally; job result recorded on server with filename metadata
-7. Keepalive port disconnected after all URLs are processed
+### Backend bulk mode
+1. Paste URLs → **Submit bulk job** → `POST /v2/capture` → `job_id`
+2. Panel opens `chrome.runtime.connect('wb-keepalive')` port (pings every 20 s to keep SW alive)
+3. Claim job → receive settings + URL list
+4. For each URL: `WB_EXECUTE_CAPTURE_URL` → SW opens background tab, captures, closes tab
+5. `wbCreateCaptureFilename` generates filename locally; posts `{url, filename}` to `/result` (no PDF bytes)
+6. PDF saved to IndexedDB; backend records metadata only
+7. Keepalive port disconnected in `finally`
 
-### Background tab scrolling fix
-Background tabs have `document.hidden = true`, breaking `IntersectionObserver`-based lazy loading.
-Fix in `wbCaptureTab()` after `Emulation.setEmulatedMedia`:
-- `Emulation.setFocusEmulationEnabled` → treats tab as focused
-- `Runtime.evaluate` overrides `document.hidden` / `document.visibilityState` to `false`/`'visible'`
+### Background tab visibility fix (CDP capture only)
+Background tabs have `document.hidden = true`, breaking lazy loaders.
+`wbCaptureTab()` after `Emulation.setEmulatedMedia`:
+- `Emulation.setFocusEmulationEnabled` → tab behaves as focused
+- `Runtime.evaluate` overrides `document.hidden` / `document.visibilityState`
 
-### MV3 service worker keepalive
-Between URL captures the service worker can be killed by Chrome. During a bulk job, the panel holds a persistent `chrome.runtime.connect({ name: 'wb-keepalive' })` port and pings it every 20 s. `background.js` registers an `onConnect` listener for this port. The port is disconnected in a `finally` block after the job completes.
+---
+
+## How scraping works
+
+Scraping uses `chrome.scripting.executeScript` — **no CDP, no debugger attachment, no banner**.
+
+### Per-URL flow (`wbScrapeUrl`)
+1. `wbCreateTab(url)` — background tab
+2. `wbWaitForTabLoad(tabId)` — Chrome API, no CDP
+3. `setTimeout(wait_ms)` — JS settle
+4. `chrome.scripting.executeScript` — runs extraction function in page context:
+   - Overrides `document.hidden`/`visibilityState` inline (no CDP emulation needed)
+   - Returns `{title, meta_description, h1, links[], text_preview}`
+5. `wbRemoveTab(tabId)` — close tab
+
+**Why not CDP for scraping:** CDP (`chrome.debugger`) requires `debugger.attach()` which triggers the "debugging this browser" banner. `scripting.executeScript` runs in the same authenticated Chrome session (cookies intact) with zero overhead and no banner.
+
+### BFS site crawler (`scrape-panel.js`)
+- Seed URLs → claim job → shared mutable queue `[{url, depth}]`
+- N concurrent workers drain queue; each scrape result may enqueue new same-origin links (up to `max_depth`)
+- URL deduplication: normalise to `origin + pathname` (strip query/fragment)
+- Keepalive port held during crawl; `POST /v2/jobs/{id}/finish` called when queue empties
+
+### Concurrency note
+Multiple tabs open simultaneously during crawl. Default concurrency = 3.
+`scripting.executeScript` does not conflict across tabs (unlike single-tab CDP session approaches).
 
 ---
 
@@ -108,49 +151,65 @@ Between URL captures the service worker can be killed by Chrome. During a bulk j
 
 | File | Role |
 |------|------|
-| `manifest.json` | MV3; all permissions listed above |
-| `background.js` | Service worker; message handlers for `RUN_WEBSITE_INSPECTION`, `WB_CAPTURE_TAB`, `WB_EXECUTE_CAPTURE_URL`; `wbCaptureTab()`, `wbCaptureUrl()`, CDP helpers; context menu registration (`MENU_STRUCTURE`, `TEXT_TEMPLATES`); provider detection (`PROVIDERS`, `detectProvider`); network origin tracking; keepalive port listener |
-| `panel.html` | Shell; tab buttons (`data-page`); loads all scripts |
-| `panel.js` | Inspector UI rendering (provider, analytics, phones, links, scripts, slugs); full URL Tools tab (clean/classify, redirect matching, sitemap crawler); `initTabs()` tab switching |
-| `content.js` | Injected at `document_start`; responds to `SNAPSHOT` (page data extraction) and `INSERT_TEXT` (context menu text insertion) messages |
-| `rules.js` | URL routing/category pattern rules for dealer pages (SRP/VDP/specials paths by provider); used by URL Tools tab via `RULES` global |
-| `url-tool.js` | Pure pipeline functions (`ut_cleanUrls`, `ut_classifyAll`, `ut_matchRedirects`, etc.); depends on `rules.js` being loaded first |
-| `wayback-db.js` | `wbDb` IIFE — `add`, `getAll`, `delete`, `clear` over IndexedDB |
-| `wayback-panel.js` | Lazy-inits on first Wayback tab click; backend config, bulk capture (with keepalive + settings normalization), capture list |
+| `manifest.json` | MV3; `debugger` for capture, `scripting` for scrape |
+| `background.js` | Message handlers: `RUN_WEBSITE_INSPECTION`, `WB_CAPTURE_TAB`, `WB_EXECUTE_CAPTURE_URL`, `WB_SCRAPE_URL`; CDP helpers (`wbAttach/Detach/Send`); tab helpers (`wbCreateTab/RemoveTab/WaitForTabLoad`); `wbCaptureTab()`, `wbCaptureUrl()`, `wbScrapeUrl()` |
+| `panel.html` | Shell; tab nav (`data-page`); global API config panel; loads all scripts |
+| `panel.js` | Inspector UI; URL Tools tab; `initTabs()` |
+| `content.js` | `SNAPSHOT` (page data) + `INSERT_TEXT` (context menu) |
+| `rules.js` | Dealer URL pattern rules — URL Tools tab |
+| `url-tool.js` | URL classification pipeline — URL Tools tab |
+| `wayback-db.js` | IndexedDB `captures` store |
+| `wayback-panel.js` | Wayback tab + global API config wiring (URL, key, health dot) |
+| `scrape-panel.js` | Scrape tab; BFS crawl loop; concurrency pool; results table + CSV export |
 
-### IndexedDB schema (`wayback-db.js`)
-Store: `captures`. Each record: `{ id (auto), url, title, filename, timestamp, pdfBlob, size }`.
+### Global API config (header)
+`wbBackendConfig = { apiBase, apiKey }` lives in `wayback-panel.js` and is shared globally.
+`wbFetch()` is the single HTTP helper used by both `wayback-panel.js` and `scrape-panel.js`.
+Config persisted in `chrome.storage.sync`. Health dot in header shows green/red.
 
-### Filename format (`wbCreateCaptureFilename`)
+### IndexedDB schema
+Store: `captures`. Record: `{ id (auto), url, title, filename, timestamp, pdfBlob, size }`.
+
+### Filename format
 `[jobId[:8]-]wayback-{hostname}-{path-slug}-{date}.pdf`
-- Hostname dots → hyphens; path slugified
-- Job ID prefix added in backend mode to prevent collisions across jobs for the same URL
 
 ---
 
 ## Database
 
-SQLite (`wayback.db`), created automatically, running in WAL mode for safe concurrent access. Single `jobs` table:
+SQLite (`wayback.db`), WAL mode. Single `jobs` table:
 
 ```sql
 CREATE TABLE IF NOT EXISTS jobs (
     id       TEXT PRIMARY KEY,
     status   TEXT NOT NULL,              -- queued | running | done | cancelled | error
-    results  TEXT NOT NULL DEFAULT '[]', -- JSON: [{url, filename, file_url, error}]
-    settings TEXT NOT NULL DEFAULT '{}', -- JSON: capture params (snake_case keys)
+    results  TEXT NOT NULL DEFAULT '[]', -- JSON array; schema varies by source
+    settings TEXT NOT NULL DEFAULT '{}', -- JSON: job params (snake_case)
     created  TEXT NOT NULL DEFAULT (datetime('now')),
-    source   TEXT NOT NULL DEFAULT 'v2'  -- always 'v2' in this project
+    source   TEXT NOT NULL DEFAULT 'v2'  -- 'v2' = capture | 'scrape' = scrape/crawl
 )
 ```
 
-No migrations needed — fresh DB on first run with all columns present.
+Capture results: `[{url, file_url, error}]`  
+Scrape results: `[{url, title, meta_description, h1, links, text_preview, error}]`
+
+---
+
+## Pluggable job pattern
+
+Each new job type follows:
+1. `POST /v2/{type}` → `_create_job(job_id, settings_dict, source='{type}')`
+2. Extension claims via shared `POST /v2/jobs/{id}/claim`
+3. Extension posts results to `/v2/jobs/{id}/{type}-result`
+4. Backend auto-closes when `len(results) >= url_count`, or extension calls `POST /v2/jobs/{id}/finish`
+5. New panel tab = new `{type}-panel.js` file
 
 ---
 
 ## Known limitations
 
-- [ ] **Concurrency** — URLs captured sequentially by the extension; parallel jobs from multiple extension instances could conflict
-- [ ] **pyproject.toml version pins** — dependencies have `>=` lower bounds but are not locked (no lockfile)
-- [ ] **Read endpoint auth** — `/v2/jobs`, `/v2/jobs/{id}` are open; anyone with the tunnel URL can read job history
-- [ ] **Rate limiting** — no throttle on `POST /v2/capture`
-- [ ] **`screens/` cleanup** — no TTL or size cap on server-side PDFs (only populated if a client explicitly sends `pdf_data`)
+- [ ] **Read endpoint auth** — `/v2/jobs`, `/v2/jobs/{id}` are open (no key required)
+- [ ] **Rate limiting** — no throttle on job submission endpoints
+- [ ] **`screens/` cleanup** — no TTL or size cap on server-side PDFs
+- [ ] **Service worker revival** — if SW is killed mid-crawl (keepalive failure), job stays `running` forever; no recovery endpoint
+- [ ] **Crawl politeness** — no `robots.txt` check, no crawl delay between requests

@@ -125,53 +125,10 @@ chrome.webRequest.onCompleted.addListener(
   { urls: ["<all_urls>"] }
 );
 
-/* CDP Session — persistent debugger tab, banner fires only once */
-
-let wbCdpSession = null; // { tabId }
-
 /* Message Handling */
 
 // Must return true synchronously to keep the response channel open.
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'WB_CDP_CONNECT') {
-    (async () => {
-      try {
-        if (wbCdpSession) { sendResponse({ ok: true, already: true }); return; }
-        const tab = await wbCreateTab('about:blank');
-        await wbAttach(tab.id);
-        await wbSend(tab.id, 'Page.enable', {});
-        await wbSend(tab.id, 'Runtime.enable', {});
-        await wbSend(tab.id, 'Page.setLifecyclePagesEnabled', { enabled: true }).catch(() => {});
-        wbCdpSession = { tabId: tab.id };
-        sendResponse({ ok: true });
-      } catch (e) {
-        sendResponse({ ok: false, error: String(e) });
-      }
-    })();
-    return true;
-  }
-
-  if (msg.type === 'WB_CDP_DISCONNECT') {
-    (async () => {
-      try {
-        if (wbCdpSession) {
-          await wbDetach(wbCdpSession.tabId).catch(() => {});
-          await wbRemoveTab(wbCdpSession.tabId);
-          wbCdpSession = null;
-        }
-        sendResponse({ ok: true });
-      } catch (e) {
-        sendResponse({ ok: false, error: String(e) });
-      }
-    })();
-    return true;
-  }
-
-  if (msg.type === 'WB_CDP_STATUS') {
-    sendResponse({ connected: !!wbCdpSession });
-    return true;
-  }
-
   if (msg.type === "RUN_WEBSITE_INSPECTION") {
     (async () => {
       try {
@@ -419,132 +376,43 @@ async function wbCaptureUrl(url, settings) {
   }
 }
 
-/* ── Wayback CDP Scrape ───────────────────────────────────────────────── */
+/* ── Scrape — no CDP, no banner ───────────────────────────────────────── */
 
 async function wbScrapeUrl(url, settings = {}) {
-  if (wbCdpSession?.tabId) return wbScrapeViaSession(url, settings);
-
-  const {
-    extract_links = true,
-    extract_text  = true,
-    wait_ms       = 2000,
-  } = settings;
+  const { extract_links = true, extract_text = true, wait_ms = 3000 } = settings;
 
   const tab = await wbCreateTab(url);
   try {
     await wbWaitForTabLoad(tab.id);
-    await wbAttach(tab.id);
-    try {
-      await wbSend(tab.id, 'Runtime.enable', {});
+    if (wait_ms > 0) await new Promise(r => setTimeout(r, wait_ms));
 
-      // Treat as focused/visible so JS runs normally in the background tab
-      await wbSend(tab.id, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
-      await wbSend(tab.id, 'Runtime.evaluate', {
-        expression: `(()=>{
-          try {
-            Object.defineProperty(document,'hidden',{value:false,configurable:true});
-            Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
-            document.dispatchEvent(new Event('visibilitychange'));
-          } catch(_){}
-        })()`,
-      });
+    const [{ result }] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (extractLinks, extractText) => {
+        // Override visibility so JS-gated content behaves as if in foreground
+        try {
+          Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+          Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+          document.dispatchEvent(new Event('visibilitychange'));
+        } catch (_) {}
+        const q = s => document.querySelector(s);
+        return {
+          title:            document.title || null,
+          meta_description: q('meta[name="description"]')?.content || null,
+          h1:               q('h1')?.innerText?.trim() || null,
+          links:            extractLinks
+            ? Array.from(document.links).map(a => a.href).filter(h => h.startsWith('http'))
+            : [],
+          text_preview:     extractText
+            ? (document.body?.innerText || '').slice(0, 500).trim() || null
+            : null,
+        };
+      },
+      args: [extract_links, extract_text],
+    });
 
-      // Wait for JS-rendered content to settle
-      await new Promise(r => setTimeout(r, wait_ms));
-
-      const { result } = await wbSend(tab.id, 'Runtime.evaluate', {
-        expression: `(()=>{
-          const q = s => document.querySelector(s);
-          return {
-            title:            document.title || null,
-            meta_description: q('meta[name="description"]')?.content || null,
-            h1:               q('h1')?.innerText?.trim() || null,
-            links:            ${extract_links}
-              ? Array.from(document.links).map(a => a.href).filter(h => h.startsWith('http'))
-              : [],
-            text_preview:     ${extract_text}
-              ? (document.body?.innerText || '').slice(0, 500).trim() || null
-              : null,
-          };
-        })()`,
-        returnByValue: true,
-      });
-
-      return { url, ...result.value };
-    } finally {
-      await wbDetach(tab.id).catch(() => {});
-    }
+    return { url, ...result };
   } finally {
     await wbRemoveTab(tab.id);
   }
-}
-
-// Resolves when Page.loadEventFired fires on tabId, or after timeoutMs.
-function wbWaitForPageLoad(tabId, timeoutMs = 30000) {
-  return new Promise(resolve => {
-    let done = false;
-    const finish = () => { if (!done) { done = true; chrome.debugger.onEvent.removeListener(listener); resolve(); } };
-    const timer = setTimeout(finish, timeoutMs);
-    const listener = (source, method) => {
-      if (source.tabId === tabId && method === 'Page.loadEventFired') { clearTimeout(timer); finish(); }
-    };
-    chrome.debugger.onEvent.addListener(listener);
-  });
-}
-
-// Resolves when Page.lifecycleEvent networkIdle fires, or after timeoutMs.
-function wbWaitForNetworkIdle(tabId, timeoutMs = 5000) {
-  return new Promise(resolve => {
-    let done = false;
-    const finish = () => { if (!done) { done = true; chrome.debugger.onEvent.removeListener(listener); resolve(); } };
-    const timer = setTimeout(finish, timeoutMs);
-    const listener = (source, method, params) => {
-      if (source.tabId === tabId && method === 'Page.lifecycleEvent' && params?.name === 'networkIdle') {
-        clearTimeout(timer); finish();
-      }
-    };
-    chrome.debugger.onEvent.addListener(listener);
-  });
-}
-
-// Scrape using the persistent CDP session tab — no attach/detach overhead, banner fires once.
-async function wbScrapeViaSession(url, settings = {}) {
-  const { extract_links = true, extract_text = true, wait_ms = 5000 } = settings;
-  const tabId = wbCdpSession.tabId;
-
-  await wbSend(tabId, 'Page.navigate', { url });
-  await wbWaitForPageLoad(tabId, 30000);
-  await wbWaitForNetworkIdle(tabId, wait_ms);
-
-  // Emulate focus/visibility so JS-gated content renders
-  await wbSend(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
-  await wbSend(tabId, 'Runtime.evaluate', {
-    expression: `(()=>{
-      try {
-        Object.defineProperty(document,'hidden',{value:false,configurable:true});
-        Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
-        document.dispatchEvent(new Event('visibilitychange'));
-      } catch(_){}
-    })()`,
-  });
-
-  const { result } = await wbSend(tabId, 'Runtime.evaluate', {
-    expression: `(()=>{
-      const q = s => document.querySelector(s);
-      return {
-        title:            document.title || null,
-        meta_description: q('meta[name="description"]')?.content || null,
-        h1:               q('h1')?.innerText?.trim() || null,
-        links:            ${extract_links}
-          ? Array.from(document.links).map(a => a.href).filter(h => h.startsWith('http'))
-          : [],
-        text_preview:     ${extract_text}
-          ? (document.body?.innerText || '').slice(0, 500).trim() || null
-          : null,
-      };
-    })()`,
-    returnByValue: true,
-  });
-
-  return { url, ...result.value };
 }
