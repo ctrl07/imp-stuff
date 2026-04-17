@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Imp Stuff",
+  "version": "0.9.0",
+  "description": "Feel free to share any feedback!",
+
+  "permissions": [
+    "webRequest",
+    "tabs",
+    "contextMenus",
+    "storage",
+    "sidePanel",
+    "commands",
+    "debugger",
+    "alarms",
+    "unlimitedStorage",
+    "downloads"
+  ],
+
+  "host_permissions": ["<all_urls>"],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+
+  "action": {
+    "default_title": "Imp Stuff"
+  },
+
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+
+  "commands": {
+    "open-side-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Open side panel"
+    }
+  }
+}
