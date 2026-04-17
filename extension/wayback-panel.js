@@ -72,6 +72,17 @@ function wbSetStatus(message) {
   if (status) status.textContent = message;
 }
 
+function wbUpdateCdpDot(connected) {
+  const dot = document.getElementById('cdp-status-dot');
+  const btn = document.getElementById('cdp-connect-btn');
+  if (dot) {
+    dot.style.background = connected ? '#86efac' : '#475569';
+    dot.title = connected ? 'CDP session active' : 'CDP disconnected';
+    dot.dataset.connected = connected ? 'true' : 'false';
+  }
+  if (btn) btn.textContent = connected ? 'CDP ✓' : 'CDP';
+}
+
 function wbSetBackendStatus(message, healthy = false) {
   const dot  = document.getElementById('api-status-dot');
   const text = document.getElementById('api-status-text');
@@ -409,6 +420,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('api-save-btn')?.addEventListener('click', wbSaveBackendConfig);
     document.getElementById('api-test-btn')?.addEventListener('click', wbTestBackend);
+  }
+
+  // CDP session button
+  const cdpBtn = document.getElementById('cdp-connect-btn');
+  if (cdpBtn) {
+    chrome.runtime.sendMessage({ type: 'WB_CDP_STATUS' }, resp => wbUpdateCdpDot(resp?.connected));
+    cdpBtn.addEventListener('click', async () => {
+      const dot = document.getElementById('cdp-status-dot');
+      const connected = dot?.dataset.connected === 'true';
+      cdpBtn.disabled = true;
+      if (connected) {
+        await new Promise(res => chrome.runtime.sendMessage({ type: 'WB_CDP_DISCONNECT' }, res));
+        wbUpdateCdpDot(false);
+      } else {
+        cdpBtn.textContent = 'CDP…';
+        const resp = await new Promise(res => chrome.runtime.sendMessage({ type: 'WB_CDP_CONNECT' }, res));
+        wbUpdateCdpDot(resp?.ok === true);
+      }
+      cdpBtn.disabled = false;
+    });
   }
 
   // Load config + probe backend immediately on open

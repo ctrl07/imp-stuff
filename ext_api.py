@@ -276,6 +276,19 @@ def post_scrape_result(job_id: str, payload: V2ScrapeResultRequest):
     return {"ok": True}
 
 
+@router.post("/jobs/{job_id}/finish", dependencies=[Depends(require_api_key)])
+def finish_job(job_id: str):
+    """Mark a crawl/scrape job as done regardless of result count. Called by extension after BFS crawl completes."""
+    with get_db() as db:
+        row = db.execute("SELECT status, results FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "job not found")
+    if row["status"] == "done":
+        return {"ok": True}
+    db_set_done(job_id, json.loads(row["results"]))
+    return {"ok": True}
+
+
 @router.delete("/jobs/{job_id}", status_code=204, dependencies=[Depends(require_api_key)])
 def delete_job(job_id: str):
     """Cancel an active job, or delete a terminal job and its PDF files."""
