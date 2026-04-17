@@ -17,17 +17,6 @@ async function wbInit() {
     </div>
 
     <article>
-      <header style="margin-bottom:0.75rem"><strong>Backend API</strong></header>
-      <input id="wb-api-base" type="url" placeholder="http://127.0.0.1:8081" aria-label="API base URL" spellcheck="false">
-      <input id="wb-api-key" type="text" placeholder="X-API-Key" aria-label="API key" spellcheck="false">
-      <div role="group">
-        <button id="wb-save-backend-btn" type="button" class="secondary">Save backend</button>
-        <button id="wb-test-backend-btn" type="button" class="secondary outline">Test backend</button>
-      </div>
-      <small id="wb-backend-status">Local backend is disabled.</small>
-    </article>
-
-    <article>
       <header style="margin-bottom:0.75rem"><strong>Bulk capture</strong></header>
       <textarea id="wb-bulk-urls" placeholder="Paste URLs — one per line…" aria-label="Bulk URLs" rows="4" spellcheck="false"></textarea>
       <div role="group">
@@ -45,16 +34,12 @@ async function wbInit() {
   `;
 
   document.getElementById('wb-capture-btn').addEventListener('click', wbCapture);
-  document.getElementById('wb-save-backend-btn').addEventListener('click', wbSaveBackendConfig);
-  document.getElementById('wb-test-backend-btn').addEventListener('click', wbTestBackend);
   document.getElementById('wb-send-bulk-btn').addEventListener('click', wbSubmitBulkToBackend);
   document.getElementById('wb-send-current-backend-btn').addEventListener('click', wbSubmitCurrentToBackend);
   document.getElementById('wb-download-btn').addEventListener('click', wbDownloadSelected);
   document.getElementById('wb-delete-sel-btn').addEventListener('click', wbDeleteSelected);
   document.getElementById('wb-clear-btn').addEventListener('click', wbClearAll);
 
-  await wbLoadBackendConfig();
-  await wbUpdateBackendStatus();
   await wbRenderList();
 }
 
@@ -63,8 +48,8 @@ async function wbLoadBackendConfig() {
     chrome.storage.sync.get([WB_STORAGE_KEYS.apiBase, WB_STORAGE_KEYS.apiKey], data => {
       wbBackendConfig.apiBase = data[WB_STORAGE_KEYS.apiBase] || '';
       wbBackendConfig.apiKey  = data[WB_STORAGE_KEYS.apiKey]  || '';
-      const apiBaseInput = document.getElementById('wb-api-base');
-      const apiKeyInput  = document.getElementById('wb-api-key');
+      const apiBaseInput = document.getElementById('api-base-input');
+      const apiKeyInput  = document.getElementById('api-key-input');
       if (apiBaseInput) apiBaseInput.value = wbBackendConfig.apiBase;
       if (apiKeyInput)  apiKeyInput.value  = wbBackendConfig.apiKey;
       resolve();
@@ -73,10 +58,8 @@ async function wbLoadBackendConfig() {
 }
 
 async function wbSaveBackendConfig() {
-  const apiBaseInput = document.getElementById('wb-api-base');
-  const apiKeyInput = document.getElementById('wb-api-key');
-  wbBackendConfig.apiBase = apiBaseInput?.value.trim() || '';
-  wbBackendConfig.apiKey = apiKeyInput?.value.trim() || '';
+  wbBackendConfig.apiBase = document.getElementById('api-base-input')?.value.trim() || '';
+  wbBackendConfig.apiKey  = document.getElementById('api-key-input')?.value.trim() || '';
   await new Promise(resolve => chrome.storage.sync.set({
     [WB_STORAGE_KEYS.apiBase]: wbBackendConfig.apiBase,
     [WB_STORAGE_KEYS.apiKey]: wbBackendConfig.apiKey,
@@ -90,11 +73,10 @@ function wbSetStatus(message) {
 }
 
 function wbSetBackendStatus(message, healthy = false) {
-  const status = document.getElementById('wb-backend-status');
-  if (status) {
-    status.textContent = message;
-    status.style.color = healthy ? '#86efac' : '#fda4af';
-  }
+  const dot  = document.getElementById('api-status-dot');
+  const text = document.getElementById('api-status-text');
+  if (dot)  { dot.style.background = healthy ? '#86efac' : '#fda4af'; dot.title = message; }
+  if (text) { text.textContent = message; text.style.color = healthy ? '#86efac' : '#fda4af'; }
 }
 
 function wbNormalizeApiBase(base) {
@@ -121,22 +103,19 @@ async function wbFetch(path, opts = {}) {
 async function wbUpdateBackendStatus() {
   const apiBase = wbBackendConfig.apiBase.trim();
   if (!apiBase) {
-    wbSetBackendStatus('Local backend is disabled.', false);
-    wbSetStatus('Ready.');
+    wbSetBackendStatus('Not configured', false);
     return;
   }
   try {
     await wbFetch('/health');
-    wbSetBackendStatus(`Backend OK: ${apiBase}`, true);
-    wbSetStatus('Backend connected.');
+    wbSetBackendStatus(`OK: ${apiBase}`, true);
   } catch (err) {
-    wbSetBackendStatus(`Backend error: ${err.message}`, false);
-    wbSetStatus('Backend connection failed.');
+    wbSetBackendStatus(`Error: ${err.message}`, false);
   }
 }
 
 async function wbTestBackend() {
-  wbSetStatus('Testing backend...');
+  wbSetBackendStatus('Testing…', false);
   await wbUpdateBackendStatus();
 }
 
@@ -420,8 +399,22 @@ function escHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
-// Lazy-init: only build the UI once, when the tab is first clicked
 document.addEventListener('DOMContentLoaded', () => {
+  // Global API config panel
+  const configBtn = document.getElementById('api-config-btn');
+  const configPanel = document.getElementById('api-config-panel');
+  if (configBtn && configPanel) {
+    configBtn.addEventListener('click', () => {
+      configPanel.style.display = configPanel.style.display === 'none' ? '' : 'none';
+    });
+    document.getElementById('api-save-btn')?.addEventListener('click', wbSaveBackendConfig);
+    document.getElementById('api-test-btn')?.addEventListener('click', wbTestBackend);
+  }
+
+  // Load config + probe backend immediately on open
+  wbLoadBackendConfig().then(() => wbUpdateBackendStatus());
+
+  // Lazy-init Wayback tab
   document.querySelectorAll('.page-tab').forEach(tab => {
     if (tab.dataset.page === 'wayback') {
       tab.addEventListener('click', () => {

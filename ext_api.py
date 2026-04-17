@@ -50,21 +50,11 @@ def _strip_trailing_blank_pages(pdf_bytes: bytes) -> bytes:
     return buf.getvalue()
 
 
-def _create_job(job_id: str, req: "V2CaptureRequest"):
-    settings = {
-        "urls":            [str(u) for u in req.urls],
-        "url_count":       len(req.urls),
-        "width":           req.width,
-        "height":          req.height,
-        "delay_settle":    req.delay_settle,
-        "scroll_interval": req.scroll_interval,
-        "max_scrolls":     req.max_scrolls,
-        "custom_css":      req.custom_css,
-    }
+def _create_job(job_id: str, settings: dict, source: str = "v2"):
     with get_db() as db:
         db.execute(
             "INSERT INTO jobs (id, status, settings, source) VALUES (?, ?, ?, ?)",
-            (job_id, "queued", json.dumps(settings), "v2"),
+            (job_id, "queued", json.dumps(settings), source),
         )
 
 # ── Models ─────────────────────────────────────────────────────────────────────
@@ -85,6 +75,24 @@ class V2UrlResultRequest(BaseModel):
     pdf_data: Optional[str] = None  # base64-encoded PDF bytes
     error: Optional[str] = None
 
+
+class V2ScrapeRequest(BaseModel):
+    urls: list[AnyHttpUrl]
+    extract_links: bool = True
+    extract_text: bool = True
+    wait_ms: int = 2000
+    max_depth: int = 0  # 0 = no crawl, >0 = follow links N levels
+
+
+class V2ScrapeResultRequest(BaseModel):
+    url: str
+    title: Optional[str] = None
+    meta_description: Optional[str] = None
+    h1: Optional[str] = None
+    links: list[str] = []
+    text_preview: Optional[str] = None
+    error: Optional[str] = None
+
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
 @router.get("/health")
@@ -98,7 +106,33 @@ def capture(req: V2CaptureRequest):
     if not req.urls:
         raise HTTPException(422, "urls list cannot be empty")
     job_id = str(uuid.uuid4())
-    _create_job(job_id, req)
+    _create_job(job_id, {
+        "urls":            [str(u) for u in req.urls],
+        "url_count":       len(req.urls),
+        "width":           req.width,
+        "height":          req.height,
+        "delay_settle":    req.delay_settle,
+        "scroll_interval": req.scroll_interval,
+        "max_scrolls":     req.max_scrolls,
+        "custom_css":      req.custom_css,
+    })
+    return {"job_id": job_id, "status": "queued"}
+
+
+@router.post("/scrape", status_code=202, dependencies=[Depends(require_api_key)])
+def scrape(req: V2ScrapeRequest):
+    """Submit a scrape job. Extension claims and executes via CDP in the authenticated browser."""
+    if not req.urls:
+        raise HTTPException(422, "urls list cannot be empty")
+    job_id = str(uuid.uuid4())
+    _create_job(job_id, {
+        "urls":          [str(u) for u in req.urls],
+        "url_count":     len(req.urls),
+        "extract_links": req.extract_links,
+        "extract_text":  req.extract_text,
+        "wait_ms":       req.wait_ms,
+        "max_depth":     req.max_depth,
+    }, source="scrape")
     return {"job_id": job_id, "status": "queued"}
 
 
@@ -206,6 +240,40 @@ def post_result(job_id: str, payload: V2UrlResultRequest):
         db_update_results(job_id, results)
 
     return {"ok": True, "filename": filename, "file_url": file_url}
+
+
+@router.post("/jobs/{job_id}/scrape-result", dependencies=[Depends(require_api_key)])
+def post_scrape_result(job_id: str, payload: V2ScrapeResultRequest):
+    """Called by the extension once per scraped URL. Updates results and auto-closes job when done."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT status, results, settings FROM jobs WHERE id = ?", (job_id,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(404, "job not found")
+    if row["status"] not in ("running", "queued"):
+        raise HTTPException(409, f"job is {row['status']}, cannot post result")
+
+    settings  = json.loads(row["settings"])
+    url_count = settings.get("url_count", 1)
+    results   = json.loads(row["results"])
+
+    results.append({
+        "url":              payload.url,
+        "title":            payload.title,
+        "meta_description": payload.meta_description,
+        "h1":               payload.h1,
+        "links":            payload.links,
+        "text_preview":     payload.text_preview,
+        "error":            payload.error,
+    })
+
+    if len(results) >= url_count:
+        db_set_done(job_id, results)
+    else:
+        db_update_results(job_id, results)
+
+    return {"ok": True}
 
 
 @router.delete("/jobs/{job_id}", status_code=204, dependencies=[Depends(require_api_key)])

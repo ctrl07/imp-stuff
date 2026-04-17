@@ -182,6 +182,18 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     })();
     return true;
   }
+
+  if (msg.type === 'WB_SCRAPE_URL') {
+    (async () => {
+      try {
+        const result = await wbScrapeUrl(msg.url, msg.settings || {});
+        sendResponse({ ok: true, ...result });
+      } catch (e) {
+        sendResponse({ ok: false, error: String(e) });
+      }
+    })();
+    return true;
+  }
 });
 
 /* Init */
@@ -359,6 +371,64 @@ async function wbCaptureUrl(url, settings) {
   try {
     await wbWaitForTabLoad(tab.id);
     return await wbCaptureTab(tab.id, url, tab.title || url, settings);
+  } finally {
+    await wbRemoveTab(tab.id);
+  }
+}
+
+/* ── Wayback CDP Scrape ───────────────────────────────────────────────── */
+
+async function wbScrapeUrl(url, settings = {}) {
+  const {
+    extract_links = true,
+    extract_text  = true,
+    wait_ms       = 2000,
+  } = settings;
+
+  const tab = await wbCreateTab(url);
+  try {
+    await wbWaitForTabLoad(tab.id);
+    await wbAttach(tab.id);
+    try {
+      await wbSend(tab.id, 'Runtime.enable', {});
+
+      // Treat as focused/visible so JS runs normally in the background tab
+      await wbSend(tab.id, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
+      await wbSend(tab.id, 'Runtime.evaluate', {
+        expression: `(()=>{
+          try {
+            Object.defineProperty(document,'hidden',{value:false,configurable:true});
+            Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
+            document.dispatchEvent(new Event('visibilitychange'));
+          } catch(_){}
+        })()`,
+      });
+
+      // Wait for JS-rendered content to settle
+      await new Promise(r => setTimeout(r, wait_ms));
+
+      const { result } = await wbSend(tab.id, 'Runtime.evaluate', {
+        expression: `(()=>{
+          const q = s => document.querySelector(s);
+          return {
+            title:            document.title || null,
+            meta_description: q('meta[name="description"]')?.content || null,
+            h1:               q('h1')?.innerText?.trim() || null,
+            links:            ${extract_links}
+              ? Array.from(document.links).map(a => a.href).filter(h => h.startsWith('http'))
+              : [],
+            text_preview:     ${extract_text}
+              ? (document.body?.innerText || '').slice(0, 500).trim() || null
+              : null,
+          };
+        })()`,
+        returnByValue: true,
+      });
+
+      return { url, ...result.value };
+    } finally {
+      await wbDetach(tab.id).catch(() => {});
+    }
   } finally {
     await wbRemoveTab(tab.id);
   }

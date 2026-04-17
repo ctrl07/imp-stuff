@@ -302,12 +302,33 @@
   <main>
     <header>
       <h1>Imp Stuff</h1>
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <span id="api-status-dot" title="Backend not configured"
+          style="width:7px;height:7px;border-radius:50%;background:#475569;flex-shrink:0"></span>
+        <button id="api-config-btn" class="copy-all-btn">API</button>
+      </div>
     </header>
+
+    <div id="api-config-panel" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.75rem;
+         background:rgba(255,255,255,0.05);border-radius:0.65rem">
+      <div style="display:flex;gap:0.4rem;margin-bottom:0.4rem">
+        <input id="api-base-input" type="url" placeholder="http://127.0.0.1:8081" aria-label="API base URL"
+          spellcheck="false" style="flex:2;margin:0;padding:0.28rem 0.5rem;font-size:0.8rem;border-radius:0.4rem">
+        <input id="api-key-input" type="text" placeholder="API key" aria-label="API key"
+          spellcheck="false" style="flex:1;margin:0;padding:0.28rem 0.5rem;font-size:0.8rem;border-radius:0.4rem">
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <button id="api-save-btn" class="copy-all-btn">Save</button>
+        <button id="api-test-btn" class="copy-all-btn">Test</button>
+        <small id="api-status-text" style="color:#94a3b8;font-size:0.75rem"></small>
+      </div>
+    </div>
 
     <nav class="page-tabs">
       <button class="page-tab active" data-page="inspector">Inspector</button>
       <button class="page-tab" data-page="url-tools">URL Tools</button>
       <button class="page-tab" data-page="wayback">Wayback</button>
+      <button class="page-tab" data-page="scrape">Scrape</button>
     </nav>
 
     <div id="page-inspector" class="page">
@@ -450,8 +471,13 @@
     <div id="page-wayback" class="page" style="display:none">
       <!-- content rendered by wayback-panel.js -->
     </div>
+
+    <div id="page-scrape" class="page" style="display:none">
+      <!-- content rendered by scrape-panel.js -->
+    </div>
   </main>
   <script src="wayback-db.js" defer></script>
   <script src="wayback-panel.js" defer></script>
+  <script src="scrape-panel.js" defer></script>
 </body>
 </html>
