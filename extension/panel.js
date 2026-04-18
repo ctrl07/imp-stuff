@@ -2,7 +2,8 @@
 
 const panel = {
   data: null,
-  sitemapLinks: []
+  sitemapLinks: [],
+  sitemapAbort: false
 };
 
 function el(id) {
@@ -197,19 +198,26 @@ async function onCrawlSitemap() {
   const statusEl = el('sitemap-status');
   if (!button) return;
 
-  button.disabled = true;
+  if (panel.sitemapAbort === 'running') {
+    panel.sitemapAbort = true;
+    return;
+  }
+
+  panel.sitemapAbort = 'running';
+  button.textContent = 'Cancel';
   if (statusEl) statusEl.textContent = 'Crawling sitemaps...';
 
   try {
     const links = await getAllSitemapLinks(pageUrl);
     panel.sitemapLinks = links;
     renderSitemapLinks(links);
-    if (statusEl) statusEl.textContent = `Found ${links.length} URLs.`;
+    if (statusEl) statusEl.textContent = panel.sitemapAbort === true ? `Cancelled — ${links.length} URLs found.` : `Found ${links.length} URLs.`;
   } catch (error) {
     console.warn('Sitemap crawl error:', error);
     if (statusEl) statusEl.textContent = 'Crawl failed.';
   } finally {
-    button.disabled = false;
+    panel.sitemapAbort = false;
+    button.textContent = 'Crawl Sitemaps';
   }
 }
 
@@ -222,7 +230,7 @@ async function getAllSitemapLinks(pageUrl) {
   const visited = new Set();
   const result = [];
   for (const url of candidates) {
-    if (visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
+    if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
     await crawlSitemap(url, visited, result);
   }
   return [...new Set(result)].slice(0, SITEMAP_MAX_URLS);
@@ -260,7 +268,8 @@ async function fetchSitemapText(url) {
   }
 }
 
-async function crawlSitemap(url, visited, collector) {
+async function crawlSitemap(url, visited, collector, depth = 0) {
+  if (depth > 10) return;
   if (visited.has(url) || visited.size >= SITEMAP_MAX_INDEXES || collector.length >= SITEMAP_MAX_URLS) return;
   visited.add(url);
   const xml = await fetchSitemapText(url);
@@ -275,13 +284,13 @@ async function crawlSitemap(url, visited, collector) {
 
   if (root === 'sitemapindex' || doc.getElementsByTagName('sitemap').length) {
     for (const loc of getLocs('sitemap')) {
-      if (visited.size >= SITEMAP_MAX_INDEXES || collector.length >= SITEMAP_MAX_URLS) break;
+      if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || collector.length >= SITEMAP_MAX_URLS) break;
       const next = safeUrl(loc, url);
       if (next) await crawlSitemap(next, visited, collector);
     }
   } else {
     for (const loc of getLocs('url')) {
-      if (collector.length >= SITEMAP_MAX_URLS) break;
+      if (panel.sitemapAbort === true || collector.length >= SITEMAP_MAX_URLS) break;
       const next = safeUrl(loc, url);
       if (next) collector.push(next);
     }

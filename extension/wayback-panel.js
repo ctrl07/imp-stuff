@@ -145,8 +145,8 @@ async function wbSubmitToBackend(urls) {
       method: 'POST',
       body: JSON.stringify({ urls }),
     });
-    const data = await res.json();
-    wbSetStatus(`Job queued: ${data.job_id}. Claiming and capturing...`);
+    const data = await res.json().catch(() => { throw new Error('Invalid response from backend'); });
+    wbSetStatus(`Capturing ${urls.length} URL(s)…`);
     await wbExecuteV2Job(data.job_id);
     wbSetStatus(`Job complete: ${data.job_id}`);
     await wbRenderList();
@@ -157,7 +157,7 @@ async function wbSubmitToBackend(urls) {
 
 async function wbExecuteV2Job(jobId) {
   const claimRes = await wbFetch(`/v2/jobs/${jobId}/claim`, { method: 'POST' });
-  const jobData = await claimRes.json();
+  const jobData = await claimRes.json().catch(() => { throw new Error('Invalid claim response'); });
   const raw = jobData.settings || {};
   const urls = raw.urls || [];
 
@@ -363,8 +363,13 @@ async function wbOpenCapture(id) {
   const capture = captures.find(c => c.id === id);
   if (!capture) return;
   const url = URL.createObjectURL(capture.pdfBlob);
-  window.open(url, '_blank');
-  setTimeout(() => URL.revokeObjectURL(url), 15000);
+  try {
+    window.open(url, '_blank');
+    // Revoke after a tick — the tab has the URL, we no longer need the reference
+    await new Promise(r => setTimeout(r, 0));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function wbDownloadCapture(id) {
@@ -372,14 +377,17 @@ async function wbDownloadCapture(id) {
   const capture = captures.find(c => c.id === id);
   if (!capture) return;
   const url = URL.createObjectURL(capture.pdfBlob);
-  const filename = capture.filename || wbCreateCaptureFilename(capture.url);
-  await new Promise((resolve, reject) => {
-    chrome.downloads.download({ url, filename, saveAs: false }, downloadId => {
-      if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-      resolve(downloadId);
+  try {
+    const filename = capture.filename || wbCreateCaptureFilename(capture.url);
+    await new Promise((resolve, reject) => {
+      chrome.downloads.download({ url, filename, saveAs: false }, downloadId => {
+        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        resolve(downloadId);
+      });
     });
-  });
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function wbDeleteSelected() {

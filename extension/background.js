@@ -125,6 +125,8 @@ chrome.webRequest.onCompleted.addListener(
   { urls: ["<all_urls>"] }
 );
 
+chrome.tabs.onRemoved.addListener(tabId => networkOrigins.delete(tabId));
+
 /* Message Handling */
 
 // Must return true synchronously to keep the response channel open.
@@ -244,7 +246,7 @@ async function wbCaptureTab(tabId, url, title, settings = {}) {
     // Make the page behave as focused + visible even in a background tab.
     // Without this, IntersectionObserver-based lazy loaders never fire and
     // some scroll-triggered animations don't run.
-    await wbSend(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(() => {});
+    await wbSend(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(e => console.warn('setFocusEmulationEnabled:', e.message));
     await wbSend(tabId, 'Runtime.evaluate', {
       expression: `(()=>{
         try {
@@ -304,7 +306,7 @@ async function wbCaptureTab(tabId, url, title, settings = {}) {
     return { pdfBase64: pdf.data, size: blob.size, pageHeight };
 
   } finally {
-    try { await wbDetach(tabId); } catch (_) {}
+    try { await wbDetach(tabId); } catch (e) { console.warn('wbDetach:', e.message); }
   }
 }
 
@@ -342,26 +344,28 @@ function wbRemoveTab(tabId) {
 
 function wbWaitForTabLoad(tabId, timeoutMs = 120000) {
   return new Promise((resolve, reject) => {
-    let timer = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error('Timed out waiting for tab load'));
-    }, timeoutMs);
-
-    const listener = (updatedTabId, changeInfo) => {
-      if (updatedTabId !== tabId || changeInfo.status !== 'complete') return;
+    let done = false;
+    const finish = (err) => {
+      if (done) return;
+      done = true;
       clearTimeout(timer);
       chrome.tabs.onUpdated.removeListener(listener);
-      resolve();
+      err ? reject(err) : resolve();
+    };
+
+    const timer = setTimeout(
+      () => finish(new Error('Timed out waiting for tab load')),
+      timeoutMs
+    );
+
+    const listener = (updatedTabId, changeInfo) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') finish();
     };
 
     chrome.tabs.onUpdated.addListener(listener);
     chrome.tabs.get(tabId, tab => {
-      if (chrome.runtime.lastError) return;
-      if (tab.status === 'complete') {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
-      }
+      if (chrome.runtime.lastError) return finish(new Error(chrome.runtime.lastError.message));
+      if (tab.status === 'complete') finish();
     });
   });
 }

@@ -12,7 +12,7 @@ window.addEventListener("focusin", e => {
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.action === "INSERT_TEXT" && lastFocused) {
+  if (msg.action === "INSERT_TEXT" && lastFocused && document.contains(lastFocused)) {
     lastFocused.focus();
     if (lastFocused.isContentEditable) {
       const sel = window.getSelection();

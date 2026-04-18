@@ -80,6 +80,8 @@ async function scSubmit() {
     concurrency:   parseInt(document.getElementById('sc-concurrency')?.value || '3', 10),
   };
 
+  const submitBtn = document.getElementById('sc-submit-btn');
+  if (submitBtn) submitBtn.disabled = true;
   scSetStatus('Submitting job…');
   scResults = [];
   scRenderTable();
@@ -97,6 +99,8 @@ async function scSubmit() {
     scSetStatus(`Done — ${scResults.length} pages scraped.`);
   } catch (err) {
     scSetStatus(`Error: ${err.message}`);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
 }
 
@@ -120,7 +124,8 @@ async function scCrawl(jobId, seedUrls, settings) {
   const ping = setInterval(() => keepalive.postMessage('ping'), 20000);
 
   const scrapeOne = async ({ url, depth }) => {
-    scSetStatus(`Scraping ${url} (depth ${depth}) — ${scResults.length} done, ~${queue.length} queued`);
+    const total = visited.size;
+    scSetStatus(`Scraping ${url} — ${scResults.length} / ~${total} discovered (depth ${depth})`);
     let entry;
     try {
       const resp = await new Promise((resolve, reject) => {
@@ -145,7 +150,7 @@ async function scCrawl(jobId, seedUrls, settings) {
               const norm = scNormalise(link);
               if (!visited.has(norm)) {
                 visited.add(norm);
-                queue.push({ url: lu.origin + lu.pathname, depth: depth + 1 });
+                queue.push({ url: scNormalise(lu.href), depth: depth + 1 });
               }
             } catch {}
           }
@@ -168,15 +173,24 @@ async function scCrawl(jobId, seedUrls, settings) {
   };
 
   try {
-    // Concurrency pool: workers drain the shared queue, which may grow during crawl
-    await Promise.all(
-      Array.from({ length: concurrency }, async () => {
-        while (queue.length) {
+    // Dispatch loop: up to `concurrency` tasks run in parallel; queue can grow mid-crawl.
+    // Uses a coordinator so workers don't exit prematurely while others are still discovering links.
+    let running = 0;
+    await new Promise(resolve => {
+      const tick = () => {
+        while (queue.length > 0 && running < concurrency) {
           const item = queue.shift();
-          if (item) await scrapeOne(item);
+          running++;
+          scrapeOne(item).finally(() => {
+            running--;
+            if (queue.length === 0 && running === 0) resolve();
+            else tick();
+          });
         }
-      })
-    );
+        if (queue.length === 0 && running === 0) resolve();
+      };
+      tick();
+    });
 
     // Signal backend the crawl is complete
     await wbFetch(`/v2/jobs/${jobId}/finish`, { method: 'POST' }).catch(() => {});
