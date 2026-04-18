@@ -1,5 +1,3 @@
-/* global wbBackendConfig, wbFetch */
-
 let scResults = [];
 
 function scInit() {
@@ -87,15 +85,8 @@ async function scSubmit() {
   scRenderTable();
 
   try {
-    const res = await wbFetch('/v2/scrape', {
-      method: 'POST',
-      body: JSON.stringify({ urls: seedUrls, extract_links: settings.extract_links,
-                             extract_text: settings.extract_text, wait_ms: settings.wait_ms,
-                             max_depth: settings.max_depth }),
-    });
-    const { job_id } = await res.json();
-    scSetStatus(`Claimed job ${job_id}. Starting crawl…`);
-    await scCrawl(job_id, seedUrls, settings);
+    scSetStatus('Starting crawl…');
+    await scCrawl(seedUrls, settings);
     scSetStatus(`Done — ${scResults.length} pages scraped.`);
   } catch (err) {
     scSetStatus(`Error: ${err.message}`);
@@ -104,10 +95,7 @@ async function scSubmit() {
   }
 }
 
-async function scCrawl(jobId, seedUrls, settings) {
-  // Claim the job (moves status to running)
-  await wbFetch(`/v2/jobs/${jobId}/claim`, { method: 'POST' });
-
+async function scCrawl(seedUrls, settings) {
   const { max_depth, concurrency, extract_links, extract_text, wait_ms } = settings;
 
   // BFS state
@@ -163,13 +151,6 @@ async function scCrawl(jobId, seedUrls, settings) {
 
     scResults.push(entry);
     scRenderTable();
-
-    try {
-      await wbFetch(`/v2/jobs/${jobId}/scrape-result`, {
-        method: 'POST',
-        body: JSON.stringify(entry),
-      });
-    } catch (e) { console.error('Failed to post scrape result:', e); }
   };
 
   try {
@@ -192,8 +173,6 @@ async function scCrawl(jobId, seedUrls, settings) {
       tick();
     });
 
-    // Signal backend the crawl is complete
-    await wbFetch(`/v2/jobs/${jobId}/finish`, { method: 'POST' }).catch(() => {});
   } finally {
     clearInterval(ping);
     keepalive.disconnect();
