@@ -1,34 +1,16 @@
 /* global wbDb */
 
 let wbSelected = new Set();
-let wbApiConfig = { base: '', key: '' };
 
 async function wbInit() {
   const container = document.getElementById('page-wayback');
   container.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-bottom:0.9rem">
       <small id="wb-status" style="color:#94a3b8;font-size:0.85rem">Ready.</small>
-      <div style="display:flex;gap:0.3rem;align-items:center">
-        <button id="wb-api-btn" class="copy-all-btn">API</button>
-        <button id="wb-capture-btn" type="button" id="refresh-button"
-          style="margin:0;width:auto;font-size:0.85rem;padding:0.45rem 0.75rem;border-radius:0.55rem">
-          Capture page
-        </button>
-      </div>
-    </div>
-
-    <div id="wb-api-panel" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.75rem;
-         background:rgba(255,255,255,0.05);border-radius:0.65rem">
-      <div style="display:flex;gap:0.4rem;margin-bottom:0.4rem">
-        <input id="wb-api-base" type="url" placeholder="http://127.0.0.1:8081" aria-label="API base URL"
-          spellcheck="false" style="flex:2;margin:0;padding:0.28rem 0.5rem;font-size:0.8rem;border-radius:0.4rem">
-        <input id="wb-api-key" type="text" placeholder="API key" aria-label="API key"
-          spellcheck="false" style="flex:1;margin:0;padding:0.28rem 0.5rem;font-size:0.8rem;border-radius:0.4rem">
-      </div>
-      <div style="display:flex;align-items:center;gap:0.4rem">
-        <button id="wb-api-save-btn" class="copy-all-btn">Save</button>
-        <small id="wb-api-status" style="color:#94a3b8;font-size:0.75rem"></small>
-      </div>
+      <button id="wb-capture-btn" type="button"
+        style="margin:0;width:auto;font-size:0.85rem;padding:0.45rem 0.75rem;border-radius:0.55rem">
+        Capture page
+      </button>
     </div>
 
     <section class="copy-block">
@@ -43,14 +25,12 @@ async function wbInit() {
 
     <div id="wb-list" style="margin-bottom:0.5rem"></div>
 
-    <div id="wb-actions" style="display:none;margin-bottom:0.4rem;display:flex;gap:0.3rem">
+    <div id="wb-actions" style="display:none;margin-bottom:0.4rem;gap:0.3rem">
       <button id="wb-download-btn" class="copy-all-btn">Download selected</button>
       <button id="wb-delete-sel-btn" class="copy-all-btn">Delete selected</button>
     </div>
     <button id="wb-clear-btn" class="copy-all-btn" style="width:100%">Delete all</button>
   `;
-
-  await wbLoadApiConfig();
 
   document.getElementById('wb-capture-btn').addEventListener('click', wbCapture);
   document.getElementById('wb-send-bulk-btn').addEventListener('click', wbSubmitBulk);
@@ -58,37 +38,8 @@ async function wbInit() {
   document.getElementById('wb-download-btn').addEventListener('click', wbDownloadSelected);
   document.getElementById('wb-delete-sel-btn').addEventListener('click', wbDeleteSelected);
   document.getElementById('wb-clear-btn').addEventListener('click', wbClearAll);
-  document.getElementById('wb-api-save-btn').addEventListener('click', wbSaveApiConfig);
-  document.getElementById('wb-api-btn').addEventListener('click', () => {
-    const p = document.getElementById('wb-api-panel');
-    if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
-  });
 
   await wbRenderList();
-}
-
-async function wbLoadApiConfig() {
-  return new Promise(resolve => {
-    chrome.storage.local.get(['wbApiBase', 'wbApiKey'], data => {
-      wbApiConfig.base = data.wbApiBase || '';
-      wbApiConfig.key  = data.wbApiKey  || '';
-      const baseEl = document.getElementById('wb-api-base');
-      const keyEl  = document.getElementById('wb-api-key');
-      if (baseEl) baseEl.value = wbApiConfig.base;
-      if (keyEl)  keyEl.value  = wbApiConfig.key;
-      resolve();
-    });
-  });
-}
-
-async function wbSaveApiConfig() {
-  wbApiConfig.base = document.getElementById('wb-api-base')?.value.trim() || '';
-  wbApiConfig.key  = document.getElementById('wb-api-key')?.value.trim()  || '';
-  await new Promise(resolve => chrome.storage.local.set(
-    { wbApiBase: wbApiConfig.base, wbApiKey: wbApiConfig.key }, resolve
-  ));
-  const statusEl = document.getElementById('wb-api-status');
-  if (statusEl) { statusEl.textContent = 'Saved.'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
 }
 
 function wbSetStatus(message) {
