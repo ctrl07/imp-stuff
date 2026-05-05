@@ -296,9 +296,9 @@ function initTabs() {
     tab.addEventListener('click', () => {
       const page = tab.dataset.page;
       document.querySelectorAll('.page-tab').forEach(t => t.classList.toggle('active', t === tab));
-      document.querySelectorAll('.page').forEach(p => { p.style.display = 'none'; });
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
       const target = el(`page-${page}`);
-      if (target) target.style.display = '';
+      if (target) target.classList.remove('hidden');
     });
   });
 }
@@ -409,7 +409,7 @@ function utRunMatchRedirects() {
   if (summaryEl) {
     summaryEl.textContent =
       `Matched: ${counts.matched}  ·  Redirect: ${counts.redirect}  ·  ` +
-      `Unmatched: ${counts.unmatched}  ·  Excluded (VDP): ${counts.excluded}`;
+      `Unmatched: ${counts.unmatched}`;
   }
 
   const tsvEl = el('ut-tsv-output');

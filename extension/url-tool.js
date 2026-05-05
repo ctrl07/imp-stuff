@@ -182,7 +182,6 @@ function ut_fuzzyMatch(slug, cmsSlugs, threshold) {
 
 /**
  * Run redirect matching against CMS slugs.
- * Non-participants (VDPs) get redirect_status = 'excluded'.
  * Returns enriched array with slug, redirect_status, closest_cms_match added.
  *
  * threshold: 0–1 (e.g. 0.65)
@@ -190,10 +189,6 @@ function ut_fuzzyMatch(slug, cmsSlugs, threshold) {
 function ut_matchRedirects(classified, cmsSlugs, threshold) {
   return classified.map(item => {
     const slug = ut_stripHost(item.url);
-
-    if (item.isVdp) {
-      return { ...item, slug, redirect_status: 'excluded', closest_cms_match: '' };
-    }
 
     if (cmsSlugs.has(slug)) {
       return { ...item, slug, redirect_status: 'matched', closest_cms_match: slug };
@@ -213,7 +208,7 @@ function ut_matchRedirects(classified, cmsSlugs, threshold) {
  * Tally redirect_status counts from a results array.
  */
 function ut_redirectSummary(results) {
-  const counts = { matched: 0, redirect: 0, unmatched: 0, excluded: 0 };
+  const counts = { matched: 0, redirect: 0, unmatched: 0 };
   for (const r of results) {
     const k = r.redirect_status;
     if (k in counts) counts[k]++;
