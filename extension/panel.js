@@ -150,6 +150,7 @@ function renderEmpty() {
 
 function bindEvents() {
   el('refresh-button')?.addEventListener('click', refresh);
+  el('op-crawl-sitemap-inspector')?.addEventListener('click', (e) => { e.stopPropagation(); crawlSitemapFromInspector(); });
   el('page-url')?.addEventListener('click', () => copyText(el('page-url')?.textContent, 'Page URL'));
   el('page-title')?.addEventListener('click', () => copyText(el('page-title')?.textContent, 'Title'));
   el('page-description')?.addEventListener('click', () => copyText(el('page-description')?.textContent, 'Description'));
@@ -199,6 +200,30 @@ function initGlobalCrawler() {
       panel.sitemapAbort = false;
     }
   });
+}
+
+async function crawlSitemapFromInspector() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const crawlUrl = tab?.url || '';
+  if (!crawlUrl) {
+    setStatus('No URL to crawl.');
+    return;
+  }
+
+  panel.sitemapAbort = 'running';
+  setStatus('Crawling sitemap...');
+
+  try {
+    const links = await getAllSitemapLinks(crawlUrl);
+    panel.sitemapLinks = links;
+    renderSitemapLinks(links);
+    setStatus('Sitemap crawl complete.');
+  } catch (err) {
+    console.warn('Sitemap crawl error:', err);
+    setStatus('Crawl failed.');
+  } finally {
+    panel.sitemapAbort = false;
+  }
 }
 
 const SITEMAP_MAX_INDEXES = 50;
@@ -313,9 +338,11 @@ function setUrlStatus(msg) {
 }
 
 function initUrlTools() {
+  el('op-crawl-sitemap-tools')?.addEventListener('click', () => crawlSitemapFromUrlTools());
   el('op-use-sitemap')?.addEventListener('click', utUseSitemap);
   el('op-clean-classify')?.addEventListener('click', utCleanClassify);
   el('op-match-redirects')?.addEventListener('click', utRunMatchRedirects);
+  el('op-download-tsv')?.addEventListener('click', utDownloadTsv);
   el('op-download-csv')?.addEventListener('click', utDownloadCsv);
   el('ut-show-categories')?.addEventListener('change', () => {
     if (utState.classified.length) utRenderCategoryBreakdown(utState.classified);
@@ -392,7 +419,6 @@ function utRenderCategoryBreakdown(classified) {
 
   const showCats = el('ut-show-categories')?.checked;
   if (!showCats) {
-    container.innerHTML = '<small style="color: var(--pico-muted-color)">Check "Show categories" to view breakdown</small>';
     return;
   }
 
@@ -439,11 +465,25 @@ function utRunMatchRedirects() {
       `Unmatched: ${counts.unmatched}`;
   }
 
-  const tsvEl = el('ut-tsv-output');
-  if (tsvEl) tsvEl.textContent = ut_toTsv(utState.results);
-
   el('ut-redirect-section')?.classList.remove('hidden');
-  setUrlStatus('Done. Copy TSV to paste into Excel.');
+  el('op-download-tsv')?.classList.remove('hidden');
+  el('op-download-csv')?.classList.remove('hidden');
+  setUrlStatus('Done. Download TSV or CSV.');
+}
+
+function utDownloadTsv() {
+  if (!utState.results.length) { setUrlStatus('No results to download.'); return; }
+  const tsv = ut_toTsv(utState.results);
+  const blob = new Blob([tsv], { type: 'text/tab-separated-values;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `redirects-${new Date().toISOString().split('T')[0]}.tsv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setUrlStatus('TSV downloaded.');
 }
 
 function utDownloadCsv() {
