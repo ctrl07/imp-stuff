@@ -10,7 +10,7 @@ const UT_STATIC_EXT = /\.(css|js|json|jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|e
 const UT_SITEMAP_RE  = /sitemap/i;
 
 const UT_TSV_HEADERS = [
-  'slug', 'category', 'tags', 'redirect_status', 'closest_cms_match',
+  'From*', 'To*', 'redirect_status', 'categories', 'tags',
 ];
 
 
@@ -225,10 +225,10 @@ function ut_redirectSummary(results) {
 function ut_toTsv(results) {
   const rows = results.map(r => [
     r.slug               || '',
+    r.closest_cms_match  || '',
+    r.redirect_status    || '',
     r.category           || '',
     (r.tags || []).join(','),
-    r.redirect_status    || '',
-    r.closest_cms_match  || '',
   ].map(v => String(v).replace(/\t/g, ' ')));
 
   return [UT_TSV_HEADERS, ...rows].map(r => r.join('\t')).join('\n');
