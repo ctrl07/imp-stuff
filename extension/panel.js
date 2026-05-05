@@ -217,10 +217,15 @@ async function crawlSitemapFromInspector() {
     const links = await getAllSitemapLinks(crawlUrl);
     panel.sitemapLinks = links;
     renderSitemapLinks(links);
-    setStatus('Sitemap crawl complete.');
+
+    if (links.length === 0) {
+      setStatus('No sitemap found. Check console or paste URLs manually in URL Tools.');
+    } else {
+      setStatus(`Found ${links.length} URLs.`);
+    }
   } catch (err) {
     console.warn('Sitemap crawl error:', err);
-    setStatus('Crawl failed.');
+    setStatus('Crawl failed. Check console for details.');
   } finally {
     panel.sitemapAbort = false;
   }
@@ -231,14 +236,46 @@ const SITEMAP_MAX_URLS = 50000;
 
 async function getAllSitemapLinks(pageUrl) {
   const origin = new URL(pageUrl).origin;
-  const candidates = new Set([...(await discoverFromRobots(origin)), `${origin}/sitemap.xml`, `${origin}/sitemap_index.xml`]);
+  const robotsSitemaps = await discoverFromRobots(origin);
+
+  // Standard + common variations + numbered patterns (both .xml and .xml.gz)
+  const commonSitemaps = [
+    `${origin}/sitemap.xml`,
+    `${origin}/sitemap.xml.gz`,
+    `${origin}/sitemap_index.xml`,
+    `${origin}/sitemap_index.xml.gz`,
+    `${origin}/sitemap-index.xml`,
+    `${origin}/sitemap-index.xml.gz`,
+    `${origin}/sitemaps.xml`,
+    `${origin}/sitemaps.xml.gz`,
+  ];
+
+  // Add numbered variations (sitemap1.xml through sitemap10.xml, with and without .gz)
+  for (let i = 1; i <= 10; i++) {
+    commonSitemaps.push(`${origin}/sitemap${i}.xml`);
+    commonSitemaps.push(`${origin}/sitemap${i}.xml.gz`);
+    commonSitemaps.push(`${origin}/sitemap-${i}.xml`);
+    commonSitemaps.push(`${origin}/sitemap-${i}.xml.gz`);
+  }
+
+  const candidates = new Set([...robotsSitemaps, ...commonSitemaps]);
   const visited = new Set();
   const result = [];
+
+  console.log(`[Sitemap Crawl] Origin: ${origin}`);
+  console.log(`[Sitemap Crawl] From robots.txt: ${robotsSitemaps.length}`, robotsSitemaps);
+  console.log(`[Sitemap Crawl] Checking ${candidates.size} total candidates (including compressed)`);
+
   for (const url of candidates) {
     if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
     await crawlSitemap(url, visited, result);
   }
-  return [...new Set(result)].slice(0, SITEMAP_MAX_URLS);
+
+  const finalResult = [...new Set(result)].slice(0, SITEMAP_MAX_URLS);
+  console.log(`[Sitemap Crawl] Found ${finalResult.length} total URLs`);
+  console.log(`[Sitemap Crawl] Checked ${visited.size} valid sitemap sources`);
+
+  return finalResult;
 }
 
 async function discoverFromRobots(origin) {
@@ -263,12 +300,23 @@ async function fetchSitemapText(url) {
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
-    if (!url.toLowerCase().endsWith('.gz')) return await response.text();
-    if ('DecompressionStream' in window && response.body) {
-      return await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).text();
+
+    const isCompressed = url.toLowerCase().endsWith('.gz');
+    let text;
+
+    if (isCompressed && 'DecompressionStream' in window && response.body) {
+      text = await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).text();
+      console.log(`[Sitemap] Decompressed: ${url}`);
+    } else if (isCompressed) {
+      console.log(`[Sitemap] Gzip not supported, trying raw: ${url}`);
+      text = await response.text();
+    } else {
+      text = await response.text();
     }
-    return await response.text();
-  } catch {
+
+    return text;
+  } catch (err) {
+    console.log(`[Sitemap] Failed to fetch ${url}: ${err.message}`);
     return null;
   }
 }
@@ -373,19 +421,23 @@ async function crawlSitemapFromUrlTools() {
   }
 
   panel.sitemapAbort = 'running';
+  setUrlStatus('Crawling sitemap...');
+
   try {
     const links = await getAllSitemapLinks(crawlUrl);
     panel.sitemapLinks = links;
+
     if (links.length === 0) {
-      setUrlStatus('No sitemap URLs found.');
+      setUrlStatus('No sitemap found. Paste URLs manually or check console for details.');
       return;
     }
+
     const input = el('url-bulk-input');
     if (input) input.value = links.join('\n');
-    setUrlStatus(`Crawled and loaded ${links.length} sitemap URLs.`);
+    setUrlStatus(`Loaded ${links.length} URLs from sitemap.`);
   } catch (err) {
     console.warn('Sitemap crawl error:', err);
-    setUrlStatus('Crawl failed.');
+    setUrlStatus('Crawl failed. Check console for details.');
   } finally {
     panel.sitemapAbort = false;
   }
