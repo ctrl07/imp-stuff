@@ -118,9 +118,11 @@ chrome.webRequest.onCompleted.addListener(
   details => {
     if (details.type === "main_frame") {
       const key = `tab_${details.tabId}`;
-      chrome.storage.session.setObject(key, {
-        url: details.url.toLowerCase(),
-        statusCode: details.statusCode
+      chrome.storage.session.set({
+        [key]: {
+          url: details.url.toLowerCase(),
+          statusCode: details.statusCode
+        }
       });
     }
   },

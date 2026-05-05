@@ -2,8 +2,7 @@
 
 const panel = {
   data: null,
-  sitemapLinks: [],
-  sitemapAbort: false
+  sitemapLinks: []
 };
 
 function el(id) {
@@ -188,7 +187,6 @@ async function performSitemapCrawl(onSuccess, onError) {
     return;
   }
 
-  panel.sitemapAbort = true;
   setStatus('Crawling sitemap...');
 
   try {
@@ -199,8 +197,6 @@ async function performSitemapCrawl(onSuccess, onError) {
   } catch (err) {
     console.warn('Sitemap crawl error:', err);
     onError();
-  } finally {
-    panel.sitemapAbort = false;
   }
 }
 
@@ -249,12 +245,12 @@ async function getAllSitemapLinks(pageUrl) {
 
   // Try robots.txt sitemaps first
   for (const url of robotsSitemaps) {
-    if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
+    if (visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
     await crawlSitemap(url, visited, result);
   }
 
-  // If robots.txt had sitemaps and we found results, we're done
-  if (robotsSitemaps.length > 0 && result.length > 0) {
+  // If we found results from robots.txt sitemaps, return them
+  if (result.length > 0) {
     const finalResult = [...new Set(result)].slice(0, SITEMAP_MAX_URLS);
     console.log(`[Sitemap Crawl] Found ${finalResult.length} URLs from robots.txt sitemaps`);
     console.log(`[Sitemap Crawl] Checked ${visited.size} valid sitemap sources`);
@@ -272,18 +268,28 @@ async function getAllSitemapLinks(pageUrl) {
     `${origin}/sitemap-index.xml.gz`,
     `${origin}/sitemaps.xml`,
     `${origin}/sitemaps.xml.gz`,
+    `${origin}/sitemap/sitemap.xml`,
+    `${origin}/sitemap/sitemap.xml.gz`,
+    `${origin}/sitemap/index.xml`,
+    `${origin}/sitemap/index.xml.gz`,
+    `${origin}/sitemap`,
+    `${origin}/sitemap/`,
+    `${origin}/wp-sitemap.xml`,
+    `${origin}/wp-sitemap-index.xml`,
   ];
 
   // Add numbered variations (sitemap1.xml through sitemap10.xml)
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 10; i++) {
     commonSitemaps.push(`${origin}/sitemap${i}.xml`);
     commonSitemaps.push(`${origin}/sitemap${i}.xml.gz`);
     commonSitemaps.push(`${origin}/sitemap-${i}.xml`);
     commonSitemaps.push(`${origin}/sitemap-${i}.xml.gz`);
+    commonSitemaps.push(`${origin}/sitemap/sitemap${i}.xml`);
+    commonSitemaps.push(`${origin}/sitemap/sitemap${i}.xml.gz`);
   }
 
   for (const url of commonSitemaps) {
-    if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
+    if (visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
     await crawlSitemap(url, visited, result);
   }
 
@@ -354,13 +360,13 @@ async function crawlSitemap(url, visited, collector, depth = 0) {
 
   if (root === 'sitemapindex' || doc.getElementsByTagName('sitemap').length) {
     for (const loc of getLocs('sitemap')) {
-      if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || collector.length >= SITEMAP_MAX_URLS) break;
+      if (visited.size >= SITEMAP_MAX_INDEXES || collector.length >= SITEMAP_MAX_URLS) break;
       const next = safeUrl(loc, url);
       if (next) await crawlSitemap(next, visited, collector, depth + 1);
     }
   } else {
     for (const loc of getLocs('url')) {
-      if (panel.sitemapAbort === true || collector.length >= SITEMAP_MAX_URLS) break;
+      if (collector.length >= SITEMAP_MAX_URLS) break;
       const next = safeUrl(loc, url);
       if (next) collector.push(next);
     }
@@ -446,7 +452,6 @@ async function crawlSitemapFromUrlTools() {
     return;
   }
 
-  panel.sitemapAbort = 'running';
   setUrlStatus('Crawling sitemap...');
 
   try {
@@ -464,8 +469,6 @@ async function crawlSitemapFromUrlTools() {
   } catch (err) {
     console.warn('Sitemap crawl error:', err);
     setUrlStatus('Crawl failed. Check console for details.');
-  } finally {
-    panel.sitemapAbort = false;
   }
 }
 
