@@ -115,17 +115,22 @@ function detectProvider({ footerText = "", networkOrigin = "", linkHrefs = [], m
 /* Network Tracking */
 
 const networkOrigins = new Map();
+const tabStatusCodes  = new Map();
 
 chrome.webRequest.onCompleted.addListener(
   details => {
     if (details.type === "main_frame") {
       networkOrigins.set(details.tabId, details.url.toLowerCase());
+      tabStatusCodes.set(details.tabId, details.statusCode);
     }
   },
   { urls: ["<all_urls>"] }
 );
 
-chrome.tabs.onRemoved.addListener(tabId => networkOrigins.delete(tabId));
+chrome.tabs.onRemoved.addListener(tabId => {
+  networkOrigins.delete(tabId);
+  tabStatusCodes.delete(tabId);
+});
 
 /* Message Handling */
 
@@ -159,36 +164,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
-  if (msg.type === "WB_CAPTURE_TAB") {
-    (async () => {
-      try {
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.id) throw new Error('No active tab.');
-        const result = await wbCaptureTab(tab.id, tab.url, tab.title, msg.settings || {});
-        sendResponse({ ok: true, ...result });
-      } catch (e) {
-        sendResponse({ ok: false, error: String(e) });
-      }
-    })();
-    return true;
-  }
-
-  if (msg.type === 'WB_EXECUTE_CAPTURE_URL') {
-    (async () => {
-      try {
-        const result = await wbCaptureUrl(msg.url, msg.settings || {});
-        sendResponse({ ok: true, ...result });
-      } catch (e) {
-        sendResponse({ ok: false, error: String(e) });
-      }
-    })();
-    return true;
-  }
-
   if (msg.type === 'WB_SCRAPE_URL') {
     (async () => {
       try {
-        const result = await wbScrapeUrl(msg.url, msg.settings || {});
+        const result = await wbScrapeUrl(msg.url, msg.settings || {}, msg.reuseTabId || null);
         sendResponse({ ok: true, ...result });
       } catch (e) {
         sendResponse({ ok: false, error: String(e) });
@@ -210,9 +189,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (text) chrome.tabs.sendMessage(tab.id, { action: "INSERT_TEXT", text });
 });
 
-chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === "open-side-panel" && tab?.id) {
-    chrome.sidePanel.open({ tabId: tab.id });
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command === "open-side-panel") {
+    const t = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+    if (t?.id) chrome.sidePanel.open({ tabId: t.id });
   }
 });
 
@@ -223,109 +203,7 @@ chrome.runtime.onConnect.addListener(port => {
   }
 });
 
-/* ── Wayback CDP Capture ──────────────────────────────────────────────── */
-
-async function wbCaptureTab(tabId, url, title, settings = {}) {
-  const {
-    scrollInterval = 600,
-    maxScrolls     = null,
-    delaySettle    = 3000,
-    customCss      = '',
-    width          = 1920,
-    height         = 1080,
-  } = settings;
-
-  await wbAttach(tabId);
-  try {
-    await wbSend(tabId, 'Page.enable',    {});
-    await wbSend(tabId, 'Runtime.enable', {});
-    await wbSend(tabId, 'Emulation.setDeviceMetricsOverride',
-      { width, height, deviceScaleFactor: 1, mobile: false });
-    await wbSend(tabId, 'Emulation.setEmulatedMedia', { media: 'screen' });
-
-    // Make the page behave as focused + visible even in a background tab.
-    // Without this, IntersectionObserver-based lazy loaders never fire and
-    // some scroll-triggered animations don't run.
-    await wbSend(tabId, 'Emulation.setFocusEmulationEnabled', { enabled: true }).catch(e => console.warn('setFocusEmulationEnabled:', e.message));
-    await wbSend(tabId, 'Runtime.evaluate', {
-      expression: `(()=>{
-        try {
-          Object.defineProperty(document,'hidden',{value:false,configurable:true});
-          Object.defineProperty(document,'visibilityState',{value:'visible',configurable:true});
-          document.dispatchEvent(new Event('visibilitychange'));
-        } catch(_){}
-      })()`,
-    });
-
-    // Scroll to trigger lazy-loaded images
-    const maxScrollsJS = maxScrolls === null ? 'null' : String(maxScrolls);
-    await wbSend(tabId, 'Runtime.evaluate', {
-      expression: `(async()=>{await new Promise(resolve=>{
-        const d=window.innerHeight, m=${maxScrollsJS};
-        let c=0;
-        const t=setInterval(()=>{
-          window.scrollBy(0,d); c++;
-          const bot=window.scrollY+window.innerHeight>=document.body.scrollHeight;
-          if((bot&&c>=2)||(m!==null&&c>=m)){clearInterval(t);window.scrollTo(0,0);resolve();}
-        },${scrollInterval});
-      })})()`,
-      awaitPromise: true,
-      timeout: 120000,
-    });
-
-    await new Promise(r => setTimeout(r, delaySettle));
-
-    // Inject custom CSS
-    if (customCss.trim()) {
-      await wbSend(tabId, 'Runtime.evaluate', {
-        expression: `(()=>{const s=document.createElement('style');
-          s.id='__wb_css';s.textContent=${JSON.stringify(customCss)};
-          document.head.appendChild(s);})()`,
-      });
-    }
-
-    // Measure true content height
-    const { result } = await wbSend(tabId, 'Runtime.evaluate', {
-      expression: `(()=>{const b=document.body,e=document.documentElement;
-        return Math.min(Math.max(b.scrollHeight,b.offsetHeight),
-                        Math.max(e.scrollHeight,e.offsetHeight));})()`,
-    });
-    const pageHeight = result.value;
-
-    // Export full-page PDF
-    const pdf = await wbSend(tabId, 'Page.printToPDF', {
-      printBackground: true,
-      paperWidth:      width  / 96,
-      paperHeight:     pageHeight / 96,
-      marginTop: 0, marginBottom: 0, marginLeft: 0, marginRight: 0,
-    });
-
-    // pdf.data is base64 — convert to Blob via fetch (works in MV3 service workers)
-    const blob = await fetch(`data:application/pdf;base64,${pdf.data}`).then(r => r.blob());
-
-    return { pdfBase64: pdf.data, size: blob.size, pageHeight };
-
-  } finally {
-    try { await wbDetach(tabId); } catch (e) { console.warn('wbDetach:', e.message); }
-  }
-}
-
-// CDP helpers
-const wbAttach = tabId => new Promise((res, rej) =>
-  chrome.debugger.attach({ tabId }, '1.3', () =>
-    chrome.runtime.lastError ? rej(new Error(chrome.runtime.lastError.message)) : res()
-  )
-);
-const wbDetach = tabId => new Promise((res, rej) =>
-  chrome.debugger.detach({ tabId }, () =>
-    chrome.runtime.lastError ? rej(new Error(chrome.runtime.lastError.message)) : res()
-  )
-);
-const wbSend = (tabId, method, params) => new Promise((res, rej) =>
-  chrome.debugger.sendCommand({ tabId }, method, params, r =>
-    chrome.runtime.lastError ? rej(new Error(`${method}: ${chrome.runtime.lastError.message}`)) : res(r)
-  )
-);
+/* ── Tab helpers (used by Scrape) ───────────────────────────────────── */
 
 function wbCreateTab(url) {
   return new Promise((resolve, reject) => {
@@ -370,53 +248,86 @@ function wbWaitForTabLoad(tabId, timeoutMs = 120000) {
   });
 }
 
-async function wbCaptureUrl(url, settings) {
-  const tab = await wbCreateTab(url);
-  try {
-    await wbWaitForTabLoad(tab.id);
-    return await wbCaptureTab(tab.id, url, tab.title || url, settings);
-  } finally {
-    await wbRemoveTab(tab.id);
-  }
-}
-
 /* ── Scrape — no CDP, no banner ───────────────────────────────────────── */
 
-async function wbScrapeUrl(url, settings = {}) {
-  const { extract_links = true, extract_text = true, wait_ms = 3000 } = settings;
+async function wbScrapeUrl(url, settings = {}, reuseTabId = null) {
+  const {
+    extract_title = true,
+    extract_description = true,
+    extract_h1 = true,
+    extract_links = true,
+    custom_selectors = [],
+    wait_ms = 3000
+  } = settings;
 
-  const tab = await wbCreateTab(url);
+  // Crawl-check: reuse the caller's active tab if its URL matches (avoids opening duplicate tab)
+  let ownedTab = null;
+  let tabId;
+  if (reuseTabId !== null) {
+    try {
+      const existing = await new Promise((res, rej) =>
+        chrome.tabs.get(reuseTabId, t => chrome.runtime.lastError ? rej() : res(t))
+      );
+      const norm = u => { try { const p = new URL(u); return p.origin + p.pathname.replace(/\/+$/, ''); } catch { return u; } };
+      if (norm(existing.url) === norm(url)) {
+        tabId = reuseTabId;
+      }
+    } catch (_) {}
+  }
+
+  if (tabId == null) {
+    ownedTab = await wbCreateTab(url);
+    tabId = ownedTab.id;
+    await wbWaitForTabLoad(tabId);
+  }
+
   try {
-    await wbWaitForTabLoad(tab.id);
     if (wait_ms > 0) await new Promise(r => setTimeout(r, wait_ms));
 
+    const statusCode = tabStatusCodes.get(tabId) || null;
+
     const [{ result }] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: (extractLinks, extractText) => {
-        // Override visibility so JS-gated content behaves as if in foreground
+      target: { tabId },
+      func: (extractTitle, extractDescription, extractH1, extractLinks, customSelectors) => {
         try {
           Object.defineProperty(document, 'hidden', { value: false, configurable: true });
           Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
           document.dispatchEvent(new Event('visibilitychange'));
         } catch (_) {}
         const q = s => document.querySelector(s);
-        return {
-          title:            document.title || null,
-          meta_description: q('meta[name="description"]')?.content || null,
-          h1:               q('h1')?.innerText?.trim() || null,
-          links:            extractLinks
-            ? Array.from(document.links).map(a => a.href).filter(h => h.startsWith('http'))
-            : [],
-          text_preview:     extractText
-            ? (document.body?.innerText || '').slice(0, 500).trim() || null
-            : null,
-        };
+        const qa = s => Array.from(document.querySelectorAll(s));
+
+        const result = {};
+
+        if (extractTitle) result.title = document.title || null;
+        if (extractDescription) result.meta_description = q('meta[name="description"]')?.content || null;
+        if (extractH1) result.h1 = q('h1')?.innerText?.trim() || null;
+
+        if (extractLinks) {
+          result.links = Array.from(document.links)
+            .map(a => a.href)
+            .filter(h => h.startsWith('http'));
+        } else {
+          result.links = [];
+        }
+
+        result.custom_data = {};
+        for (const selector of customSelectors) {
+          try {
+            const els = qa(selector);
+            result.custom_data[selector] = els.map(el => el.innerText?.trim() || el.textContent?.trim()).filter(Boolean).join(' | ');
+          } catch (_) {
+            result.custom_data[selector] = null;
+          }
+        }
+
+        return result;
       },
-      args: [extract_links, extract_text],
+      args: [extract_title, extract_description, extract_h1, extract_links, custom_selectors],
     });
 
-    return { url, ...result };
+    return { url, statusCode, ...result };
   } finally {
-    await wbRemoveTab(tab.id);
+    if (ownedTab) await wbRemoveTab(ownedTab.id);
   }
 }

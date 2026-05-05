@@ -15,23 +15,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.action === "INSERT_TEXT" && lastFocused && document.contains(lastFocused)) {
     lastFocused.focus();
     if (lastFocused.isContentEditable) {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount) {
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(msg.text));
-        range.collapse(false);
-      } else {
-        lastFocused.textContent += msg.text;
-      }
+      document.execCommand('insertText', false, msg.text);
     } else {
-      lastFocused.value += msg.text;
+      const cursorPos = lastFocused.selectionStart || lastFocused.value.length;
+      lastFocused.value = lastFocused.value.slice(0, cursorPos) + msg.text + lastFocused.value.slice(cursorPos);
+      lastFocused.selectionStart = lastFocused.selectionEnd = cursorPos + msg.text.length;
     }
-    return;
+    sendResponse({ ok: true });
+    return true;
   }
 
   if (msg.type === "SNAPSHOT") {
     sendResponse(extractSnapshot());
+    return true;
   }
 });
 
