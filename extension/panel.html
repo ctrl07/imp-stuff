@@ -3,13 +3,24 @@
 <head>
   <meta charset="utf-8">
   <title>Imp Stuff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="pico.min.css">
   <script src="rules.js" defer></script>
   <script src="url-tool.js" defer></script>
   <script src="panel.js" defer></script>
   <style>
-    body {
-      margin: 0;
+    :root {
+      --pico-font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    code, pre, kbd, textarea {
+      font-family: "JetBrains Mono", "Courier New", monospace;
+    }
+
+    .hidden {
+      display: none !important;
     }
 
     main {
@@ -36,31 +47,31 @@
     .page-tabs {
       display: flex;
       gap: 0.3rem;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid var(--pico-card-border-color);
       padding-bottom: 0.4rem;
       margin-bottom: 0.9rem;
     }
 
     .page-tab {
-      width: auto !important;
-      margin: 0 !important;
+      width: auto;
+      margin: 0;
       padding: 0.3rem 0.85rem;
       font-size: 0.85rem;
       border-radius: 0.4rem;
       background: transparent;
-      color: #64748b;
+      color: var(--pico-muted-color);
       border: none;
       cursor: pointer;
       transition: background 0.2s, color 0.2s;
     }
 
     .page-tab.active {
-      background: rgba(255,255,255,0.1);
-      color: #e2e8f0;
+      background: var(--pico-card-background-color);
+      color: var(--pico-color);
     }
 
     .page-tab:hover:not(.active) {
-      color: #cbd5e1;
+      color: var(--pico-color);
     }
 
     /* Inspector */
@@ -76,7 +87,7 @@
     .inspector-bar small {
       margin: 0;
       font-size: 0.85rem;
-      color: #94a3b8;
+      color: var(--pico-muted-color);
     }
 
     button#refresh-button {
@@ -98,13 +109,13 @@
       font-size: 0.88rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: var(--pico-muted-color);
     }
 
     .copy-block pre {
       margin: 0;
       padding: 0.9rem;
-      background: rgba(255,255,255,0.08);
+      background: var(--pico-card-background-color);
       border-radius: 0.65rem;
       white-space: pre-wrap;
       word-break: break-word;
@@ -115,17 +126,32 @@
     }
 
     .copy-block pre:hover {
-      background: rgba(255,255,255,0.12);
+      background: var(--pico-card-border-color);
     }
 
     details {
       margin-bottom: 0.9rem;
     }
 
+    .section-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .pico-btn-sm {
+      padding: 0.22rem 0.6rem;
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
     .code-block {
       margin: 0.4rem 0 0;
       padding: 0.75rem 0.85rem;
-      background: rgba(255,255,255,0.06);
+      background: var(--pico-form-element-border-color);
       border-radius: 0.65rem;
       font-family: monospace;
       font-size: 0.85rem;
@@ -135,56 +161,14 @@
       max-height: 240px;
       color: inherit;
       line-height: 1.6;
-    }
-
-    .copy-all-btn {
-      flex-shrink: 0;
-      width: auto !important;
-      margin: 0 !important;
-      padding: 0.22rem 0.6rem;
-      font-size: 0.75rem;
-      line-height: 1.4;
-      border-radius: 0.4rem;
-      background: rgba(255,255,255,0.12);
-      color: inherit;
-      border: none;
       cursor: pointer;
       transition: background 0.2s ease;
     }
 
-    .copy-all-btn:hover {
-      background: rgba(255,255,255,0.24);
+    .code-block:hover {
+      background: var(--pico-card-border-color);
     }
 
-    .clickable-row {
-      cursor: pointer;
-    }
-
-    .clickable-row:hover {
-      background: rgba(255,255,255,0.12);
-    }
-
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      margin: 0.8rem 0 0.4rem;
-    }
-
-    .section-head h2 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .section-head[data-toggle] {
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .details-toggle {
-      display: none;
-    }
 
     ul {
       list-style: none;
@@ -224,10 +208,10 @@
       box-sizing: border-box;
       min-height: 96px;
       padding: 0.75rem 0.85rem;
-      background: rgba(255,255,255,0.06);
+      background: var(--pico-form-element-border-color);
       border: none;
       border-radius: 0.65rem;
-      color: #e2e8f0;
+      color: var(--pico-color);
       font-family: monospace;
       font-size: 0.82rem;
       line-height: 1.5;
@@ -237,11 +221,11 @@
 
     .tool-textarea:focus {
       outline: none;
-      background: rgba(255,255,255,0.09);
+      background: var(--pico-card-border-color);
     }
 
     .tool-textarea::placeholder {
-      color: #475569;
+      color: var(--pico-muted-color);
     }
 
     .slider-row {
@@ -261,7 +245,7 @@
 
     input[type="range"] {
       width: 110px;
-      accent-color: #e2e8f0;
+      accent-color: var(--pico-color);
       cursor: pointer;
     }
 
@@ -286,15 +270,15 @@
       font-size: 0.72rem;
       line-height: 1.4;
       border-radius: 0.35rem;
-      background: rgba(255,255,255,0.15);
-      color: #e2e8f0;
+      background: var(--pico-card-background-color);
+      color: var(--pico-color);
       border: none;
       cursor: pointer;
       transition: background 0.2s ease;
     }
 
     .inner-copy-btn:hover {
-      background: rgba(255,255,255,0.28);
+      background: var(--pico-card-border-color);
     }
   </style>
 </head>
@@ -307,8 +291,6 @@
     <nav class="page-tabs">
       <button class="page-tab active" data-page="inspector">Inspector</button>
       <button class="page-tab" data-page="url-tools">URL Tools</button>
-      <button class="page-tab" data-page="wayback">Wayback</button>
-      <button class="page-tab" data-page="scrape">Scrape</button>
     </nav>
 
     <div id="page-inspector" class="page">
@@ -317,83 +299,76 @@
         <button id="refresh-button" type="button">Refresh</button>
       </div>
 
-      <section class="copy-block">
-        <strong>Page URL</strong>
-        <pre id="page-url">No page data yet.</pre>
-      </section>
+      <details id="page-url-details" open>
+        <summary class="section-summary">
+          <strong id="page-url-label">Page URL</strong>
+        </summary>
+        <pre id="page-url" class="code-block">No page data yet.</pre>
+      </details>
 
-      <section class="copy-block">
-        <strong>Title</strong>
-        <pre id="page-title">None</pre>
-      </section>
+      <details id="page-title-details" open>
+        <summary class="section-summary">
+          <strong id="page-title-label">Title</strong>
+        </summary>
+        <pre id="page-title" class="code-block">None</pre>
+      </details>
 
-      <section class="copy-block">
-        <strong>Description</strong>
-        <pre id="page-description">None</pre>
-      </section>
+      <details id="page-description-details" open>
+        <summary class="section-summary">
+          <strong id="page-description-label">Description</strong>
+        </summary>
+        <pre id="page-description" class="code-block">None</pre>
+      </details>
 
-      <section class="copy-block">
-        <strong>Provider</strong>
-        <pre id="provider-name">None detected.</pre>
-        <small id="provider-confidence" style="display:none; color:#94a3b8;"></small>
-      </section>
+      <details id="provider-details" open>
+        <summary class="section-summary">
+          <strong id="provider-label">Provider</strong>
+        </summary>
+        <pre id="provider-name" class="code-block">None detected.</pre>
+        <small id="provider-confidence" class="hidden"></small>
+      </details>
 
-      <section id="phones-section" class="copy-block" style="display:none">
-        <strong>Phones</strong>
-        <ul id="phones-list"></ul>
-      </section>
+      <details id="phones-details">
+        <summary class="section-summary">
+          <strong id="phones-label">Phones (0)</strong>
+        </summary>
+        <pre id="phones-block" class="code-block">No phones found.</pre>
+      </details>
 
-      <div class="section-head" data-toggle="analytics-details">
-        <span id="analytics-label">Analytics (0)</span>
-        <button id="analytics-copy-btn" class="copy-all-btn" style="display:none">Copy All</button>
-      </div>
       <details id="analytics-details">
-        <summary class="details-toggle"></summary>
+        <summary class="section-summary">
+          <strong id="analytics-label">Analytics (0)</strong>
+        </summary>
         <pre id="analytics-block" class="code-block">No analytics codes found.</pre>
       </details>
 
-      <div class="section-head" data-toggle="links-details">
-        <span id="links-label">Links (0)</span>
-        <button id="links-copy-btn" class="copy-all-btn" style="display:none">Copy All</button>
-      </div>
       <details id="links-details">
-        <summary class="details-toggle"></summary>
+        <summary class="section-summary">
+          <strong id="links-label">Links (0)</strong>
+        </summary>
         <pre id="links-block" class="code-block">No links found.</pre>
       </details>
 
-      <div class="section-head" data-toggle="scripts-details">
-        <span id="scripts-label">Scripts (0)</span>
-        <button id="scripts-copy-btn" class="copy-all-btn" style="display:none">Copy All</button>
-      </div>
       <details id="scripts-details">
-        <summary class="details-toggle"></summary>
+        <summary class="section-summary">
+          <strong id="scripts-label">Scripts (0)</strong>
+        </summary>
         <pre id="scripts-block" class="code-block">No scripts found.</pre>
       </details>
 
-      <div class="section-head" data-toggle="slugs-details">
-        <span id="slugs-label">Slugs (0)</span>
-        <button id="slugs-copy-btn" class="copy-all-btn" style="display:none">Copy All</button>
-      </div>
       <details id="slugs-details">
-        <summary class="details-toggle"></summary>
+        <summary class="section-summary">
+          <strong id="slugs-label">Slugs (0)</strong>
+        </summary>
         <pre id="slugs-block" class="code-block">No slugs found.</pre>
       </details>
 
-      <section>
-        <div class="section-head">
-          <h2>Crawl Sitemap</h2>
-          <button id="crawl-sitemap-button" type="button" class="copy-all-btn">Crawl Sitemaps</button>
-        </div>
-        <small id="sitemap-status"></small>
-        <div class="section-head" data-toggle="sitemap-links-details">
-          <span id="sitemap-links-label">Sitemap URLs (0)</span>
-          <button id="sitemap-links-copy-btn" class="copy-all-btn" style="display:none">Copy All</button>
-        </div>
-        <details id="sitemap-links-details">
-          <summary class="details-toggle"></summary>
-          <pre id="sitemap-links-block" class="code-block">No sitemap URLs yet.</pre>
-        </details>
-      </section>
+      <details id="sitemap-links-details">
+        <summary class="section-summary">
+          <strong id="sitemap-links-label">Sitemap URLs (0)</strong>
+        </summary>
+        <pre id="sitemap-links-block" class="code-block">Click to expand and crawl sitemap...</pre>
+      </details>
     </div>
 
     <!-- URL Clean/Tag -->
@@ -448,16 +423,7 @@
 
     </div>
 
-    <div id="page-wayback" class="page" style="display:none">
-      <!-- content rendered by wayback-panel.js -->
-    </div>
-
-    <div id="page-scrape" class="page" style="display:none">
-      <!-- content rendered by scrape-panel.js -->
-    </div>
   </main>
-  <script src="wayback-db.js" defer></script>
-  <script src="wayback-panel.js" defer></script>
-  <script src="scrape-panel.js" defer></script>
+  <!-- <script src="scrape-panel.js" defer></script> --> <!-- Scrape: disabled for now, kept for future use -->
 </body>
 </html>

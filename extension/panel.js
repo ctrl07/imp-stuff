@@ -52,10 +52,13 @@ async function refresh() {
   }
 
   panel.data = result;
+  panel.sitemapLinks = [];
   render(result);
+  renderSitemapLinks([]);
   setStatus('Click any value to copy.');
   disableButtons(false);
 }
+
 
 function render(data) {
   setText('page-url', data.url || 'No URL available.');
@@ -66,10 +69,10 @@ function render(data) {
   if (data.provider?.name) {
     setText('provider-name', data.provider.name);
     setText('provider-confidence', data.provider.confidence);
-    if (provConf) provConf.style.display = 'block';
+    if (provConf) provConf.classList.remove('hidden');
   } else {
     setText('provider-name', 'None detected.');
-    if (provConf) provConf.style.display = 'none';
+    if (provConf) provConf.classList.add('hidden');
   }
 
   renderAnalytics(data.analytics);
@@ -81,6 +84,7 @@ function render(data) {
 
 function renderAnalytics(analytics = {}) {
   const block = el('analytics-block');
+  const label = el('analytics-label');
   if (!block) return;
 
   const items = [];
@@ -89,61 +93,41 @@ function renderAnalytics(analytics = {}) {
     normalizeArray(analytics[key]).forEach(code => items.push(`${type}: ${code}`));
   });
 
-  setBlockHeader('analytics-label', 'analytics-copy-btn', 'Analytics', items.length, items, 'All Analytics');
+  if (label) label.textContent = `Analytics (${items.length})`;
   block.textContent = items.length ? items.join('\n') : 'No analytics codes found.';
 }
 
 function renderPhones(phones = []) {
-  const section = el('phones-section');
-  const list = el('phones-list');
-  if (!section || !list) return;
-
-  list.innerHTML = '';
-  section.style.display = phones.length ? 'block' : 'none';
-
-  phones.forEach(({ label, number }) => {
-    const li = document.createElement('li');
-    li.className = 'list-row clickable-row';
-    const span = document.createElement('span');
-    span.className = 'list-value';
-    span.textContent = `${label}: ${number}`;
-    li.appendChild(span);
-    li.addEventListener('click', () => copyText(number, label));
-    list.appendChild(li);
-  });
+  const block = el('phones-block');
+  const label = el('phones-label');
+  if (!block) return;
+  const formatted = phones.map(({ label, number }) => `${label}: ${number}`);
+  if (label) label.textContent = `Phones (${phones.length})`;
+  block.textContent = phones.length ? formatted.join('\n') : 'No phones found.';
 }
 
 function renderLinks(links = []) {
   const block = el('links-block');
+  const label = el('links-label');
   if (!block) return;
-  setBlockHeader('links-label', 'links-copy-btn', 'Links', links.length, links, 'All Links');
+  if (label) label.textContent = `Links (${links.length})`;
   block.textContent = links.length ? links.join('\n') : 'No links found.';
 }
 
 function renderScripts(scripts = []) {
   const block = el('scripts-block');
+  const label = el('scripts-label');
   if (!block) return;
-  setBlockHeader('scripts-label', 'scripts-copy-btn', 'Scripts', scripts.length, scripts, 'All Scripts');
+  if (label) label.textContent = `Scripts (${scripts.length})`;
   block.textContent = scripts.length ? scripts.join('\n') : 'No scripts found.';
 }
 
 function renderSlugs(slugs = []) {
   const block = el('slugs-block');
+  const label = el('slugs-label');
   if (!block) return;
-  setBlockHeader('slugs-label', 'slugs-copy-btn', 'Slugs', slugs.length, slugs, 'All Slugs');
+  if (label) label.textContent = `Slugs (${slugs.length})`;
   block.textContent = slugs.length ? slugs.join('\n') : 'No slugs found.';
-}
-
-function setBlockHeader(labelId, btnId, label, count, values, copyLabel) {
-  const labelEl = el(labelId);
-  if (labelEl) labelEl.textContent = `${label} (${count})`;
-  const btn = el(btnId);
-  if (!btn) return;
-  btn.style.display = count ? '' : 'none';
-  btn.onclick = count ? e => {
-    e.stopPropagation();
-    copyText(values.join('\n'), copyLabel);
-  } : null;
 }
 
 function normalizeArray(value) {
@@ -166,59 +150,55 @@ function renderEmpty() {
 
 function bindEvents() {
   el('refresh-button')?.addEventListener('click', refresh);
-  el('page-url')?.addEventListener('click', () => copyText(panel.data?.url, 'Page URL'));
-  el('page-title')?.addEventListener('click', () => copyText(panel.data?.meta?.title, 'Title'));
-  el('page-description')?.addEventListener('click', () => copyText(panel.data?.meta?.description, 'Description'));
-  el('provider-name')?.addEventListener('click', () => copyText(panel.data?.provider?.name, 'Provider'));
-  el('crawl-sitemap-button')?.addEventListener('click', onCrawlSitemap);
-
-  document.addEventListener('click', e => {
-    const head = e.target.closest('.section-head[data-toggle]');
-    if (!head || e.target.classList.contains('copy-all-btn')) return;
-    const details = el(head.dataset.toggle);
-    if (details) details.open = !details.open;
-  });
+  el('page-url')?.addEventListener('click', () => copyText(el('page-url')?.textContent, 'Page URL'));
+  el('page-title')?.addEventListener('click', () => copyText(el('page-title')?.textContent, 'Title'));
+  el('page-description')?.addEventListener('click', () => copyText(el('page-description')?.textContent, 'Description'));
+  el('provider-name')?.addEventListener('click', () => copyText(el('provider-name')?.textContent, 'Provider'));
+  el('phones-block')?.addEventListener('click', () => copyText(el('phones-block')?.textContent, 'Phones'));
+  el('analytics-block')?.addEventListener('click', () => copyText(el('analytics-block')?.textContent, 'Analytics'));
+  el('links-block')?.addEventListener('click', () => copyText(el('links-block')?.textContent, 'Links'));
+  el('scripts-block')?.addEventListener('click', () => copyText(el('scripts-block')?.textContent, 'Scripts'));
+  el('slugs-block')?.addEventListener('click', () => copyText(el('slugs-block')?.textContent, 'Slugs'));
+  el('sitemap-links-block')?.addEventListener('click', () => copyText(el('sitemap-links-block')?.textContent, 'Sitemap URLs'));
 }
 
 function renderSitemapLinks(links = []) {
   const block = el('sitemap-links-block');
+  const label = el('sitemap-links-label');
   if (!block) return;
-  setBlockHeader('sitemap-links-label', 'sitemap-links-copy-btn', 'Sitemap URLs', links.length, links, 'All Sitemap URLs');
-  block.textContent = links.length ? links.join('\n') : 'No sitemap URLs found.';
+  if (label) label.textContent = `Sitemap URLs (${links.length})`;
+  block.textContent = links.length ? links.join('\n') : 'Click to expand and crawl sitemap...';
 }
 
-async function onCrawlSitemap() {
-  const pageUrl = panel.data?.url;
-  if (!pageUrl) {
-    setStatus('No page data to crawl from.');
-    return;
-  }
+function initGlobalCrawler() {
+  const details = el('sitemap-links-details');
+  if (!details) return;
 
-  const button = el('crawl-sitemap-button');
-  const statusEl = el('sitemap-status');
-  if (!button) return;
+  details.addEventListener('toggle', async () => {
+    if (!details.open || panel.sitemapLinks.length > 0) return;
 
-  if (panel.sitemapAbort === 'running') {
-    panel.sitemapAbort = true;
-    return;
-  }
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const crawlUrl = tab?.url || '';
+    if (!crawlUrl) {
+      setStatus('No URL to crawl.');
+      return;
+    }
 
-  panel.sitemapAbort = 'running';
-  button.textContent = 'Cancel';
-  if (statusEl) statusEl.textContent = 'Crawling sitemaps...';
+    panel.sitemapAbort = 'running';
+    setStatus('Crawling sitemap...');
 
-  try {
-    const links = await getAllSitemapLinks(pageUrl);
-    panel.sitemapLinks = links;
-    renderSitemapLinks(links);
-    if (statusEl) statusEl.textContent = panel.sitemapAbort === true ? `Cancelled — ${links.length} URLs found.` : `Found ${links.length} URLs.`;
-  } catch (error) {
-    console.warn('Sitemap crawl error:', error);
-    if (statusEl) statusEl.textContent = 'Crawl failed.';
-  } finally {
-    panel.sitemapAbort = false;
-    button.textContent = 'Crawl Sitemaps';
-  }
+    try {
+      const links = await getAllSitemapLinks(crawlUrl);
+      panel.sitemapLinks = links;
+      renderSitemapLinks(links);
+      setStatus('Sitemap crawl complete.');
+    } catch (err) {
+      console.warn('Sitemap crawl error:', err);
+      setStatus('Crawl failed.');
+    } finally {
+      panel.sitemapAbort = false;
+    }
+  });
 }
 
 const SITEMAP_MAX_INDEXES = 50;
@@ -305,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   initTabs();
   initUrlTools();
+  initGlobalCrawler();
   refresh();
 });
 
