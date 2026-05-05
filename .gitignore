@@ -6,3 +6,10 @@ __pycache__/
 *.pyc
 .env
 extension/wayback-panel.zip
+.claude/
+.vscode/
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
