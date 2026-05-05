@@ -349,8 +349,8 @@ function utCleanClassify() {
   }
 
   utRenderCategoryBreakdown(utState.classified);
-  el('ut-classify-section').style.display  = '';
-  el('ut-redirect-section').style.display  = 'none';
+  el('ut-classify-section')?.classList.remove('hidden');
+  el('ut-redirect-section')?.classList.add('hidden');
   setUrlStatus(`Classified ${clean.length} URLs.`);
 }
 
@@ -367,36 +367,29 @@ function utRenderCategoryBreakdown(classified) {
     if (!items?.length) continue;
 
     const catLabel = RULES.categories[cat]?.label || 'Unclassified';
-
-    const detailsId = `ut-cat-${cat}`;
-
     const paths = items.map(i => { try { return new URL(i.url).pathname; } catch { return i.url; } });
 
-    const head = document.createElement('div');
-    head.className = 'section-head cat-head';
-    head.dataset.toggle = detailsId;
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
 
-    const span = document.createElement('span');
-    span.textContent = `${catLabel} (${items.length})`;
-    head.appendChild(span);
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = `${catLabel} (${items.length})`;
 
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-all-btn';
+    copyBtn.type = 'button';
+    copyBtn.className = 'outline secondary pico-btn-sm';
     copyBtn.textContent = 'Copy';
     copyBtn.addEventListener('click', e => { e.stopPropagation(); copyText(paths.join('\n'), catLabel); });
-    head.appendChild(copyBtn);
 
-    const details = document.createElement('details');
-    details.id = detailsId;
-    const summary = document.createElement('summary');
-    summary.className = 'details-toggle';
+    summary.appendChild(titleSpan);
+    summary.appendChild(copyBtn);
+
     const pre = document.createElement('pre');
     pre.className = 'code-block';
     pre.textContent = paths.join('\n');
 
     details.appendChild(summary);
     details.appendChild(pre);
-    container.appendChild(head);
     container.appendChild(details);
   }
 }
@@ -422,7 +415,7 @@ function utRunMatchRedirects() {
   const tsvEl = el('ut-tsv-output');
   if (tsvEl) tsvEl.textContent = ut_toTsv(utState.results);
 
-  el('ut-redirect-section').style.display = '';
+  el('ut-redirect-section')?.classList.remove('hidden');
   setUrlStatus('Done. Copy TSV to paste into Excel.');
 }
 

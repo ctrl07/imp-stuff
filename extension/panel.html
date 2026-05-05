@@ -98,48 +98,30 @@
       border-radius: 0.55rem;
     }
 
-    .copy-block {
-      display: grid;
-      gap: 0.45rem;
+    fieldset {
       margin-bottom: 0.9rem;
+      padding: 0;
+      border: none;
     }
 
-    .copy-block strong {
-      display: block;
+    fieldset legend {
       font-size: 0.88rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: var(--pico-muted-color);
+      margin-bottom: 0.45rem;
+      padding: 0;
+      width: auto;
     }
 
-    .copy-block pre {
-      margin: 0;
-      padding: 0.9rem;
-      background: var(--pico-card-background-color);
-      border-radius: 0.65rem;
-      white-space: pre-wrap;
-      word-break: break-word;
-      overflow-x: auto;
-      font-size: 0.95rem;
-      cursor: pointer;
-      transition: background 0.2s ease;
+    section h3 {
+      font-size: 1rem;
+      margin: 0.9rem 0 0.6rem;
     }
 
-    .copy-block pre:hover {
-      background: var(--pico-card-border-color);
-    }
 
     details {
       margin-bottom: 0.9rem;
-    }
-
-    .section-summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      cursor: pointer;
-      user-select: none;
     }
 
     .pico-btn-sm {
@@ -167,6 +149,23 @@
 
     .code-block:hover {
       background: var(--pico-card-border-color);
+    }
+
+    #ut-category-breakdown details {
+      margin-bottom: 0.6rem;
+    }
+
+    #ut-category-breakdown summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    #ut-category-breakdown summary button {
+      margin: 0;
     }
 
 
@@ -197,9 +196,14 @@
     #url-status {
       display: block;
       font-size: 0.85rem;
-      color: #94a3b8;
+      color: var(--pico-muted-color);
       margin-bottom: 0.6rem;
       min-height: 1.2em;
+    }
+
+    #ut-form label {
+      display: inline;
+      margin-bottom: 0;
     }
 
     .tool-textarea {
@@ -372,55 +376,53 @@
     </div>
 
     <!-- URL Clean/Tag -->
-    <div id="page-url-tools" class="page" style="display:none">
-
-      <!-- input -->
-      <section class="copy-block">
-        <strong>URLs</strong>
-        <textarea id="url-bulk-input" class="tool-textarea" placeholder="Paste URLs — one per line…" spellcheck="false"></textarea>
-      </section>
-      <div class="ops-row">
-        <button class="copy-all-btn" id="op-use-sitemap">Use Sitemap Results</button>
-        <button class="copy-all-btn" id="op-clean-classify">Clean &amp; Classify</button>
-      </div>
-      <small id="url-status"></small>
-
-      <!-- Classify results & our slug input -->
-      <div id="ut-classify-section" style="display:none">
-        <div class="section-head">
-          <span id="ut-classify-summary"></span>
-        </div>
-        <div id="ut-category-breakdown"></div>
-
-        <section class="copy-block" style="margin-top:0.8rem">
-          <strong>Staging Slugs</strong>
-          <textarea id="cms-slug-input" class="tool-textarea" placeholder="Paste CMS slugs — one per line…" spellcheck="false"></textarea>
-        </section>
-
-        <div class="slider-row">
-          <span>Match threshold</span>
-          <div class="slider-group">
-            <input type="range" id="fuzzy-threshold" min="0" max="100" value="65" step="5">
-            <span id="threshold-label">65%</span>
-          </div>
-        </div>
+    <div id="page-url-tools" class="page hidden">
+      <form id="ut-form">
+        <!-- Input URLs -->
+        <fieldset>
+          <legend>URLs</legend>
+          <textarea id="url-bulk-input" class="tool-textarea" placeholder="Paste URLs — one per line…" spellcheck="false"></textarea>
+        </fieldset>
 
         <div class="ops-row">
-          <button class="copy-all-btn" id="op-match-redirects">Match</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="op-use-sitemap">Use Sitemap Results</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="op-clean-classify">Clean &amp; Classify</button>
         </div>
-      </div>
 
-      <!-- Redirect results + TSV -->
-      <div id="ut-redirect-section" style="display:none">
-        <div class="section-head">
-          <span id="ut-redirect-summary"></span>
-        </div>
-        <div class="code-wrap">
-          <button class="inner-copy-btn" id="op-copy-tsv">Copy</button>
-          <pre id="ut-tsv-output" class="code-block" style="max-height:300px"></pre>
-        </div>
-      </div>
+        <small id="url-status"></small>
 
+        <!-- Classify results & CMS slug input -->
+        <section id="ut-classify-section" class="hidden">
+          <h3 id="ut-classify-summary"></h3>
+          <div id="ut-category-breakdown"></div>
+
+          <fieldset>
+            <legend>Staging Slugs</legend>
+            <textarea id="cms-slug-input" class="tool-textarea" placeholder="Paste CMS slugs — one per line…" spellcheck="false"></textarea>
+
+            <div class="slider-row">
+              <label for="fuzzy-threshold">Match threshold</label>
+              <div class="slider-group">
+                <input type="range" id="fuzzy-threshold" min="0" max="100" value="65" step="5">
+                <span id="threshold-label">65%</span>
+              </div>
+            </div>
+
+            <div class="ops-row">
+              <button type="button" class="outline secondary pico-btn-sm" id="op-match-redirects">Match</button>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- Redirect results + TSV -->
+        <section id="ut-redirect-section" class="hidden">
+          <h3 id="ut-redirect-summary"></h3>
+          <div class="code-wrap">
+            <button type="button" class="inner-copy-btn" id="op-copy-tsv">Copy</button>
+            <pre id="ut-tsv-output" class="code-block" style="max-height:300px"></pre>
+          </div>
+        </section>
+      </form>
     </div>
 
   </main>
