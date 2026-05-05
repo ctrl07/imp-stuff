@@ -114,22 +114,22 @@ function detectProvider({ footerText = "", networkOrigin = "", linkHrefs = [], m
 
 /* Network Tracking */
 
-const networkOrigins = new Map();
-const tabStatusCodes  = new Map();
-
 chrome.webRequest.onCompleted.addListener(
   details => {
     if (details.type === "main_frame") {
-      networkOrigins.set(details.tabId, details.url.toLowerCase());
-      tabStatusCodes.set(details.tabId, details.statusCode);
+      const key = `tab_${details.tabId}`;
+      chrome.storage.session.setObject(key, {
+        url: details.url.toLowerCase(),
+        statusCode: details.statusCode
+      });
     }
   },
   { urls: ["<all_urls>"] }
 );
 
 chrome.tabs.onRemoved.addListener(tabId => {
-  networkOrigins.delete(tabId);
-  tabStatusCodes.delete(tabId);
+  const key = `tab_${tabId}`;
+  chrome.storage.session.remove(key);
 });
 
 /* Message Handling */
@@ -145,7 +145,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         const pageData = await chrome.tabs.sendMessage(tab.id, { type: "SNAPSHOT" });
         if (!pageData) throw new Error('No response from the page snapshot script.');
 
-        const networkOrigin = networkOrigins.get(tab.id) || "";
+        const key = `tab_${tab.id}`;
+        const data = await chrome.storage.session.get(key);
+        const networkOrigin = data[key]?.url || "";
 
         sendResponse({
           ...pageData,
@@ -184,15 +186,36 @@ chrome.runtime.onInstalled.addListener(() => {
   registerVehicleMenus();
 });
 
+chrome.runtime.onStartup.addListener(() => {
+  // Clean up any background tabs created by wbScrapeUrl that may have been orphaned if the SW was killed
+  chrome.storage.session.get('scrape_tabs', (data) => {
+    const tabIds = data.scrape_tabs || [];
+    for (const tabId of tabIds) {
+      chrome.tabs.remove(tabId).catch(() => {
+        // Tab already removed, ignore error
+      });
+    }
+    chrome.storage.session.remove('scrape_tabs');
+  });
+});
+
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   const text = resolveVehicleMenuText(info.menuItemId);
-  if (text) chrome.tabs.sendMessage(tab.id, { action: "INSERT_TEXT", text });
+  if (text) {
+    chrome.tabs.sendMessage(tab.id, { type: "INSERT_TEXT", text }).catch(err => {
+      console.warn(`Failed to send INSERT_TEXT to tab ${tab.id}:`, err);
+    });
+  }
 });
 
 chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command === "open-side-panel") {
     const t = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
-    if (t?.id) chrome.sidePanel.open({ tabId: t.id });
+    if (t?.id) {
+      chrome.sidePanel.open({ tabId: t.id }).catch(err => {
+        console.warn(`Failed to open side panel on tab ${t.id}:`, err);
+      });
+    }
   }
 });
 
@@ -278,13 +301,20 @@ async function wbScrapeUrl(url, settings = {}, reuseTabId = null) {
   if (tabId == null) {
     ownedTab = await wbCreateTab(url);
     tabId = ownedTab.id;
+    // Track this tab in storage in case the SW is killed and the finally block doesn't run
+    const data = await chrome.storage.session.get('scrape_tabs');
+    const tabIds = data.scrape_tabs || [];
+    if (!tabIds.includes(tabId)) tabIds.push(tabId);
+    await chrome.storage.session.set({ scrape_tabs: tabIds });
     await wbWaitForTabLoad(tabId);
   }
 
   try {
     if (wait_ms > 0) await new Promise(r => setTimeout(r, wait_ms));
 
-    const statusCode = tabStatusCodes.get(tabId) || null;
+    const key = `tab_${tabId}`;
+    const data = await chrome.storage.session.get(key);
+    const statusCode = data[key]?.statusCode || null;
 
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId },
@@ -328,6 +358,18 @@ async function wbScrapeUrl(url, settings = {}, reuseTabId = null) {
 
     return { url, statusCode, ...result };
   } finally {
-    if (ownedTab) await wbRemoveTab(ownedTab.id);
+    if (ownedTab) {
+      await wbRemoveTab(ownedTab.id);
+      // Remove from tracking list since cleanup succeeded
+      const data = await chrome.storage.session.get('scrape_tabs');
+      const tabIds = data.scrape_tabs || [];
+      const idx = tabIds.indexOf(ownedTab.id);
+      if (idx > -1) tabIds.splice(idx, 1);
+      if (tabIds.length > 0) {
+        await chrome.storage.session.set({ scrape_tabs: tabIds });
+      } else {
+        await chrome.storage.session.remove('scrape_tabs');
+      }
+    }
   }
 }

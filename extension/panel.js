@@ -29,7 +29,10 @@ function copyText(value, label) {
 
   navigator.clipboard.writeText(value)
     .then(() => setStatus(`${label} copied.`))
-    .catch(() => setStatus(`Copy failed for ${label}.`));
+    .catch(err => {
+      console.warn(`Copy failed for ${label}:`, err);
+      setStatus(`Copy failed for ${label}.`);
+    });
 }
 
 function disableButtons(disabled) {
@@ -39,15 +42,16 @@ function disableButtons(disabled) {
 }
 
 async function refresh() {
+  const btn = el('refresh-button');
+  if (btn) btn.setAttribute('aria-busy', 'true');
   setStatus('Refreshing ...');
-  disableButtons(true);
 
   const result = await chrome.runtime.sendMessage({ type: 'RUN_WEBSITE_INSPECTION' });
 
   if (!result || result.error) {
     setStatus(result?.error ? `Error: ${result.error}` : 'Inspection failed.');
     renderEmpty();
-    disableButtons(false);
+    if (btn) btn.removeAttribute('aria-busy');
     return;
   }
 
@@ -56,7 +60,7 @@ async function refresh() {
   render(result);
   renderSitemapLinks([]);
   setStatus('Click any value to copy.');
-  disableButtons(false);
+  if (btn) btn.removeAttribute('aria-busy');
 }
 
 
@@ -69,7 +73,10 @@ function render(data) {
   if (data.provider?.name) {
     setText('provider-name', data.provider.name);
     setText('provider-confidence', data.provider.confidence);
-    if (provConf) provConf.classList.remove('hidden');
+    if (provConf) {
+      provConf.classList.remove('hidden');
+      provConf.removeAttribute('style');
+    }
   } else {
     setText('provider-name', 'None detected.');
     if (provConf) provConf.classList.add('hidden');
@@ -132,7 +139,8 @@ function renderSlugs(slugs = []) {
 
 function normalizeArray(value) {
   if (!value) return [];
-  return [...new Set(value.map(String).map(v => v.trim()).filter(Boolean))];
+  const arr = Array.isArray(value) ? value : [value];
+  return [...new Set(arr.map(String).map(v => v.trim()).filter(Boolean))];
 }
 
 function renderEmpty() {
@@ -140,7 +148,7 @@ function renderEmpty() {
   setText('page-title', 'None');
   setText('page-description', 'None');
   setText('provider-name', 'None detected.');
-  const provConf = el('provider-confidence'); if (provConf) provConf.style.display = 'none';
+  const provConf = el('provider-confidence'); if (provConf) provConf.classList.add('hidden');
   renderAnalytics({});
   renderPhones([]);
   renderLinks([]);
@@ -169,6 +177,31 @@ function renderSitemapLinks(links = []) {
   if (!block) return;
   if (label) label.textContent = `Sitemap URLs (${links.length})`;
   block.textContent = links.length ? links.join('\n') : 'Click to expand and crawl sitemap...';
+  updateUseSitemapButtonState();
+}
+
+async function performSitemapCrawl(onSuccess, onError) {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const crawlUrl = tab?.url || '';
+  if (!crawlUrl) {
+    setStatus('No URL to crawl.');
+    return;
+  }
+
+  panel.sitemapAbort = true;
+  setStatus('Crawling sitemap...');
+
+  try {
+    const links = await getAllSitemapLinks(crawlUrl);
+    panel.sitemapLinks = links;
+    renderSitemapLinks(links);
+    onSuccess(links);
+  } catch (err) {
+    console.warn('Sitemap crawl error:', err);
+    onError();
+  } finally {
+    panel.sitemapAbort = false;
+  }
 }
 
 function initGlobalCrawler() {
@@ -177,68 +210,59 @@ function initGlobalCrawler() {
 
   details.addEventListener('toggle', async () => {
     if (!details.open || panel.sitemapLinks.length > 0) return;
-
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const crawlUrl = tab?.url || '';
-    if (!crawlUrl) {
-      setStatus('No URL to crawl.');
-      return;
-    }
-
-    panel.sitemapAbort = 'running';
-    setStatus('Crawling sitemap...');
-
-    try {
-      const links = await getAllSitemapLinks(crawlUrl);
-      panel.sitemapLinks = links;
-      renderSitemapLinks(links);
-      setStatus('Sitemap crawl complete.');
-    } catch (err) {
-      console.warn('Sitemap crawl error:', err);
-      setStatus('Crawl failed.');
-    } finally {
-      panel.sitemapAbort = false;
-    }
+    await performSitemapCrawl(
+      () => setStatus('Sitemap crawl complete.'),
+      () => setStatus('Crawl failed.')
+    );
   });
 }
 
 async function crawlSitemapFromInspector() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const crawlUrl = tab?.url || '';
-  if (!crawlUrl) {
-    setStatus('No URL to crawl.');
-    return;
-  }
-
-  panel.sitemapAbort = 'running';
-  setStatus('Crawling sitemap...');
-
-  try {
-    const links = await getAllSitemapLinks(crawlUrl);
-    panel.sitemapLinks = links;
-    renderSitemapLinks(links);
-
-    if (links.length === 0) {
-      setStatus('No sitemap found. Check console or paste URLs manually in URL Tools.');
-    } else {
-      setStatus(`Found ${links.length} URLs.`);
-    }
-  } catch (err) {
-    console.warn('Sitemap crawl error:', err);
-    setStatus('Crawl failed. Check console for details.');
-  } finally {
-    panel.sitemapAbort = false;
-  }
+  await performSitemapCrawl(
+    links => {
+      if (links.length === 0) {
+        setStatus('No sitemap found. Check console or paste URLs manually in URL Tools.');
+      } else {
+        setStatus(`Found ${links.length} URLs.`);
+      }
+    },
+    () => setStatus('Crawl failed. Check console for details.')
+  );
 }
 
 const SITEMAP_MAX_INDEXES = 50;
 const SITEMAP_MAX_URLS = 50000;
 
 async function getAllSitemapLinks(pageUrl) {
+  if (!pageUrl || !pageUrl.startsWith('http')) {
+    console.log('[Sitemap Crawl] Invalid URL, aborting');
+    return [];
+  }
   const origin = new URL(pageUrl).origin;
   const robotsSitemaps = await discoverFromRobots(origin);
 
-  // Standard + common variations + numbered patterns (both .xml and .xml.gz)
+  const visited = new Set();
+  const result = [];
+
+  console.log(`[Sitemap Crawl] Origin: ${origin}`);
+  console.log(`[Sitemap Crawl] From robots.txt: ${robotsSitemaps.length}`, robotsSitemaps);
+
+  // Try robots.txt sitemaps first
+  for (const url of robotsSitemaps) {
+    if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
+    await crawlSitemap(url, visited, result);
+  }
+
+  // If robots.txt had sitemaps and we found results, we're done
+  if (robotsSitemaps.length > 0 && result.length > 0) {
+    const finalResult = [...new Set(result)].slice(0, SITEMAP_MAX_URLS);
+    console.log(`[Sitemap Crawl] Found ${finalResult.length} URLs from robots.txt sitemaps`);
+    console.log(`[Sitemap Crawl] Checked ${visited.size} valid sitemap sources`);
+    return finalResult;
+  }
+
+  // Fallback: try common patterns if robots.txt was empty or unsuccessful
+  console.log('[Sitemap Crawl] No luck with robots.txt, trying common patterns...');
   const commonSitemaps = [
     `${origin}/sitemap.xml`,
     `${origin}/sitemap.xml.gz`,
@@ -250,23 +274,15 @@ async function getAllSitemapLinks(pageUrl) {
     `${origin}/sitemaps.xml.gz`,
   ];
 
-  // Add numbered variations (sitemap1.xml through sitemap10.xml, with and without .gz)
-  for (let i = 1; i <= 10; i++) {
+  // Add numbered variations (sitemap1.xml through sitemap10.xml)
+  for (let i = 1; i <= 5; i++) {
     commonSitemaps.push(`${origin}/sitemap${i}.xml`);
     commonSitemaps.push(`${origin}/sitemap${i}.xml.gz`);
     commonSitemaps.push(`${origin}/sitemap-${i}.xml`);
     commonSitemaps.push(`${origin}/sitemap-${i}.xml.gz`);
   }
 
-  const candidates = new Set([...robotsSitemaps, ...commonSitemaps]);
-  const visited = new Set();
-  const result = [];
-
-  console.log(`[Sitemap Crawl] Origin: ${origin}`);
-  console.log(`[Sitemap Crawl] From robots.txt: ${robotsSitemaps.length}`, robotsSitemaps);
-  console.log(`[Sitemap Crawl] Checking ${candidates.size} total candidates (including compressed)`);
-
-  for (const url of candidates) {
+  for (const url of commonSitemaps) {
     if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || result.length >= SITEMAP_MAX_URLS) break;
     await crawlSitemap(url, visited, result);
   }
@@ -291,7 +307,8 @@ async function discoverFromRobots(origin) {
         try { return new URL(url.trim(), origin).toString(); } catch { return null; }
       })
       .filter(Boolean);
-  } catch {
+  } catch (err) {
+    console.warn(`Failed to fetch robots.txt from ${origin}:`, err);
     return [];
   }
 }
@@ -308,8 +325,8 @@ async function fetchSitemapText(url) {
       text = await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).text();
       console.log(`[Sitemap] Decompressed: ${url}`);
     } else if (isCompressed) {
-      console.log(`[Sitemap] Gzip not supported, trying raw: ${url}`);
-      text = await response.text();
+      console.log(`[Sitemap] Gzip not supported: ${url}`);
+      return null;
     } else {
       text = await response.text();
     }
@@ -339,7 +356,7 @@ async function crawlSitemap(url, visited, collector, depth = 0) {
     for (const loc of getLocs('sitemap')) {
       if (panel.sitemapAbort === true || visited.size >= SITEMAP_MAX_INDEXES || collector.length >= SITEMAP_MAX_URLS) break;
       const next = safeUrl(loc, url);
-      if (next) await crawlSitemap(next, visited, collector);
+      if (next) await crawlSitemap(next, visited, collector, depth + 1);
     }
   } else {
     for (const loc of getLocs('url')) {
@@ -368,7 +385,11 @@ function initTabs() {
   document.querySelectorAll('.page-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const page = tab.dataset.page;
-      document.querySelectorAll('.page-tab').forEach(t => t.classList.toggle('active', t === tab));
+      document.querySelectorAll('.page-tab').forEach(t => {
+        const isActive = t === tab;
+        t.classList.toggle('active', isActive);
+        t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
       document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
       const target = el(`page-${page}`);
       if (target) target.classList.remove('hidden');
@@ -392,13 +413,18 @@ function initUrlTools() {
   el('op-match-redirects')?.addEventListener('click', utRunMatchRedirects);
   el('op-download-tsv')?.addEventListener('click', utDownloadTsv);
   el('op-download-csv')?.addEventListener('click', utDownloadCsv);
-  el('ut-show-categories')?.addEventListener('change', () => {
-    if (utState.classified.length) utRenderCategoryBreakdown(utState.classified);
-  });
+  el('ut-show-categories')?.addEventListener('change', utToggleCategoryVisibility);
 
   const slider = el('fuzzy-threshold');
   const label  = el('threshold-label');
   slider?.addEventListener('input', () => { if (label) label.textContent = `${slider.value}%`; });
+
+  updateUseSitemapButtonState();
+}
+
+function updateUseSitemapButtonState() {
+  const btn = el('op-use-sitemap');
+  if (btn) btn.disabled = !panel.sitemapLinks?.length;
 }
 
 async function utUseSitemap() {
@@ -464,15 +490,10 @@ function utCleanClassify() {
   setUrlStatus(`Classified ${clean.length} URLs.`);
 }
 
-function utRenderCategoryBreakdown(classified) {
+function utBuildCategoryBreakdown(classified) {
   const container = el('ut-category-breakdown');
   if (!container) return;
   container.innerHTML = '';
-
-  const showCats = el('ut-show-categories')?.checked;
-  if (!showCats) {
-    return;
-  }
 
   const groups   = ut_groupByCategory(classified);
   const catOrder = [...Object.keys(RULES.categories), 'unclassified'];
@@ -497,6 +518,18 @@ function utRenderCategoryBreakdown(classified) {
     details.appendChild(pre);
     container.appendChild(details);
   }
+}
+
+function utRenderCategoryBreakdown(classified) {
+  utBuildCategoryBreakdown(classified);
+  utToggleCategoryVisibility();
+}
+
+function utToggleCategoryVisibility() {
+  const container = el('ut-category-breakdown');
+  if (!container) return;
+  const showCats = el('ut-show-categories')?.checked;
+  container.classList.toggle('hidden', !showCats);
 }
 
 function utRunMatchRedirects() {
@@ -540,7 +573,13 @@ function utDownloadTsv() {
 
 function utDownloadCsv() {
   if (!utState.results.length) { setUrlStatus('No results to download.'); return; }
-  const csv = ut_toTsv(utState.results).replace(/\t/g, ',');
+  const tsv = ut_toTsv(utState.results);
+  const csv = tsv.split('\n').map(line => {
+    return line.split('\t').map(field => {
+      if (!field || !/[",\n\r]/.test(field)) return field;
+      return '"' + field.replace(/"/g, '""') + '"';
+    }).join(',');
+  }).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);

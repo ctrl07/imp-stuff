@@ -13,6 +13,7 @@
   <style>
     :root {
       --pico-font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --small-font-size: 0.85rem;
     }
 
     code, pre, kbd, textarea {
@@ -56,13 +57,18 @@
       width: auto;
       margin: 0;
       padding: 0.3rem 0.85rem;
-      font-size: 0.85rem;
+      font-size: var(--small-font-size);
       border-radius: 0.4rem;
       background: transparent;
       color: var(--pico-muted-color);
       border: none;
       cursor: pointer;
       transition: background 0.2s, color 0.2s;
+    }
+
+    .page-tab:focus-visible {
+      outline: 2px solid var(--pico-color);
+      outline-offset: 2px;
     }
 
     .page-tab.active {
@@ -86,14 +92,14 @@
 
     .inspector-bar small {
       margin: 0;
-      font-size: 0.85rem;
+      font-size: var(--small-font-size);
       color: var(--pico-muted-color);
     }
 
     button#refresh-button {
       width: auto;
       display: inline-block;
-      font-size: 0.85rem;
+      font-size: var(--small-font-size);
       padding: 0.45rem 0.75rem;
       border-radius: 0.55rem;
     }
@@ -102,6 +108,15 @@
       margin-bottom: 0.9rem;
       padding: 0;
       border: none;
+    }
+
+    fieldset {
+      margin-bottom: 0.9rem;
+    }
+
+    fieldset.fieldset-compact {
+      margin-top: 0.9rem;
+      margin-bottom: 0.9rem;
     }
 
     fieldset legend {
@@ -124,6 +139,19 @@
       margin: 0.9rem 0 0.45rem;
     }
 
+    .ut-section-title {
+      margin-bottom: 0.6rem;
+    }
+
+    .ut-section-title-spaced {
+      margin-top: 0.9rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .ut-label-spaced {
+      margin-top: 0.6rem;
+    }
+
 
     details {
       margin-bottom: 0.9rem;
@@ -135,10 +163,11 @@
       line-height: 1.4;
     }
 
-    summary h3 {
-      margin: 0 !important;
-      font-size: 1rem !important;
-      display: inline !important;
+    summary span.section-title {
+      margin: 0;
+      font-size: 1rem;
+      display: inline;
+      font-weight: 600;
     }
 
     .code-block {
@@ -146,8 +175,7 @@
       padding: 0.75rem 0.85rem;
       background: var(--pico-form-element-border-color);
       border-radius: 0.65rem;
-      font-family: monospace;
-      font-size: 0.85rem;
+      font-size: var(--small-font-size);
       white-space: pre-wrap;
       word-break: break-all;
       overflow-y: auto;
@@ -192,22 +220,6 @@
       word-break: break-word;
     }
 
-
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0.5rem 0 0 0;
-    }
-
-    li {
-      margin-bottom: 0.5rem;
-    }
-
-    li button:not(.copy-btn) {
-      width: 100%;
-      margin: 0;
-    }
-
     /* URL Stuff */
 
     .ops-row {
@@ -219,7 +231,7 @@
 
     #url-status {
       display: block;
-      font-size: 0.85rem;
+      font-size: var(--small-font-size);
       color: var(--pico-muted-color);
       margin-bottom: 0.6rem;
       min-height: 1.2em;
@@ -260,7 +272,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.85rem;
+      font-size: var(--small-font-size);
       margin-bottom: 0.6rem;
       gap: 0.5rem;
     }
@@ -316,9 +328,9 @@
       <h1>Imp Stuff</h1>
     </header>
 
-    <nav class="page-tabs">
-      <button class="page-tab active" data-page="inspector">Inspector</button>
-      <button class="page-tab" data-page="url-tools">URL Tools</button>
+    <nav class="page-tabs" role="tablist">
+      <button class="page-tab active" data-page="inspector" role="tab" aria-selected="true" aria-controls="page-inspector">Inspector</button>
+      <button class="page-tab" data-page="url-tools" role="tab" aria-selected="false" aria-controls="page-url-tools">URL Tools</button>
     </nav>
 
     <div id="page-inspector" class="page">
@@ -329,28 +341,28 @@
 
       <details id="page-url-details" open>
         <summary class="section-summary">
-          <h3 id="page-url-label">Page URL</h3>
+          <span class="section-title" id="page-url-label">Page URL</span>
         </summary>
         <pre id="page-url" class="code-block">No page data yet.</pre>
       </details>
 
       <details id="page-title-details" open>
         <summary class="section-summary">
-          <h3 id="page-title-label">Title</h3>
+          <span class="section-title" id="page-title-label">Title</span>
         </summary>
         <pre id="page-title" class="code-block">None</pre>
       </details>
 
       <details id="page-description-details" open>
         <summary class="section-summary">
-          <h3 id="page-description-label">Description</h3>
+          <span class="section-title" id="page-description-label">Description</span>
         </summary>
         <pre id="page-description" class="code-block">None</pre>
       </details>
 
       <details id="provider-details" open>
         <summary class="section-summary">
-          <h3 id="provider-label">Provider</h3>
+          <span class="section-title" id="provider-label">Provider</span>
         </summary>
         <pre id="provider-name" class="code-block">None detected.</pre>
         <small id="provider-confidence" class="hidden"></small>
@@ -358,42 +370,42 @@
 
       <details id="phones-details">
         <summary class="section-summary">
-          <h3 id="phones-label">Phones (0)</h3>
+          <span class="section-title" id="phones-label">Phones (0)</span>
         </summary>
         <pre id="phones-block" class="code-block">No phones found.</pre>
       </details>
 
       <details id="analytics-details">
         <summary class="section-summary">
-          <h3 id="analytics-label">Analytics (0)</h3>
+          <span class="section-title" id="analytics-label">Analytics (0)</span>
         </summary>
         <pre id="analytics-block" class="code-block">No analytics codes found.</pre>
       </details>
 
       <details id="links-details">
         <summary class="section-summary">
-          <h3 id="links-label">Links (0)</h3>
+          <span class="section-title" id="links-label">Links (0)</span>
         </summary>
         <pre id="links-block" class="code-block">No links found.</pre>
       </details>
 
       <details id="scripts-details">
         <summary class="section-summary">
-          <h3 id="scripts-label">Scripts (0)</h3>
+          <span class="section-title" id="scripts-label">Scripts (0)</span>
         </summary>
         <pre id="scripts-block" class="code-block">No scripts found.</pre>
       </details>
 
       <details id="slugs-details">
         <summary class="section-summary">
-          <h3 id="slugs-label">Slugs (0)</h3>
+          <span class="section-title" id="slugs-label">Slugs (0)</span>
         </summary>
         <pre id="slugs-block" class="code-block">No slugs found.</pre>
       </details>
 
       <details id="sitemap-links-details">
         <summary class="section-summary">
-          <h3 id="sitemap-links-label">Sitemap URLs (0)</h3>
+          <span class="section-title" id="sitemap-links-label">Sitemap URLs (0)</span>
           <button type="button" class="outline secondary pico-btn-sm" id="op-crawl-sitemap-inspector">Crawl</button>
         </summary>
         <pre id="sitemap-links-block" class="code-block">Click to expand and crawl sitemap...</pre>
@@ -404,7 +416,7 @@
     <div id="page-url-tools" class="page hidden">
       <form id="ut-form">
         <!-- Input URLs -->
-        <h3 style="margin-bottom: 0.6rem;">URLs</h3>
+        <h3 class="ut-section-title">URLs</h3>
         <textarea id="url-bulk-input" class="tool-textarea" placeholder="Paste URLs — one per line…" spellcheck="false"></textarea>
 
         <div class="ops-row">
@@ -413,22 +425,23 @@
           <button type="button" class="outline secondary pico-btn-sm" id="op-clean-classify">Clean</button>
         </div>
 
-        <label style="margin-top: 0.6rem">
+        <label class="ut-label-spaced">
           <input type="checkbox" id="ut-show-categories">
           Show categories
         </label>
 
-        <small id="url-status"></small>
+        <small id="url-status" aria-live="polite" aria-atomic="true"></small>
 
         <!-- Classify results & CMS slug input -->
         <section id="ut-classify-section" class="hidden">
           <h4 id="ut-classify-summary"></h4>
           <div id="ut-category-breakdown"></div>
 
-          <h3 style="margin-top: 0.9rem; margin-bottom: 0.6rem;">Staging Slugs</h3>
+          <h3 class="ut-section-title-spaced">Staging Slugs</h3>
           <textarea id="cms-slug-input" class="tool-textarea" placeholder="Paste CMS slugs — one per line…" spellcheck="false"></textarea>
 
-          <fieldset style="margin-top: 0.9rem; margin-bottom: 0.9rem;">
+          <fieldset class="fieldset-compact">
+            <legend>Matching Options</legend>
 
             <div class="slider-row">
               <label for="fuzzy-threshold">Match threshold</label>

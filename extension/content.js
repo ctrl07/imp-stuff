@@ -12,14 +12,18 @@ window.addEventListener("focusin", e => {
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.action === "INSERT_TEXT" && lastFocused && document.contains(lastFocused)) {
+  if (msg.type === "INSERT_TEXT" && lastFocused && document.contains(lastFocused)) {
     lastFocused.focus();
     if (lastFocused.isContentEditable) {
+      // execCommand('insertText') is deprecated but still works reliably across browsers.
+      // Alternative: use selectStart to place cursor and insert text directly, but execCommand is safer for contentEditable.
       document.execCommand('insertText', false, msg.text);
     } else {
-      const cursorPos = lastFocused.selectionStart || lastFocused.value.length;
+      const cursorPos = lastFocused.selectionStart ?? lastFocused.value.length;
       lastFocused.value = lastFocused.value.slice(0, cursorPos) + msg.text + lastFocused.value.slice(cursorPos);
       lastFocused.selectionStart = lastFocused.selectionEnd = cursorPos + msg.text.length;
+      // Dispatch input event for React/Vue frameworks that depend on it
+      lastFocused.dispatchEvent(new Event('input', { bubbles: true }));
     }
     sendResponse({ ok: true });
     return true;
@@ -72,12 +76,15 @@ function getFooterText() {
 }
 
 function extractAnalytics() {
-  const html = document.documentElement.innerHTML;
+  const text = [
+    document.documentElement.outerHTML.substring(0, 10000), // Head section (usually first 10KB)
+    ...Array.from(document.scripts).map(s => s.textContent)
+  ].join(' ');
   return {
     // Require at least 6 chars after G- to avoid false positives like "G-C"
-    ga4: [...html.matchAll(/\bG-[A-Z0-9]{6,}\b/g)].map(m => m[0]),
-    gtm: [...html.matchAll(/\bGTM-[A-Z0-9]+\b/g)].map(m => m[0]),
-    ua:  [...html.matchAll(/\bUA-\d{4,}-\d+\b/g)].map(m => m[0])
+    ga4: [...text.matchAll(/\bG-[A-Z0-9]{6,}\b/g)].map(m => m[0]),
+    gtm: [...text.matchAll(/\bGTM-[A-Z0-9]+\b/g)].map(m => m[0]),
+    ua:  [...text.matchAll(/\bUA-\d{4,}-\d+\b/g)].map(m => m[0])
   };
 }
 

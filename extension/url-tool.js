@@ -6,11 +6,11 @@
 
 /* ── Constants ────────────────────────────────────────────────────────────── */
 
-const UT_STATIC_EXT = /\.(css|js|json|jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|eot|ico|pdf|zip|map|gz|xml)(\?.*)?$/i;
+const UT_STATIC_EXT = /\.(css|js|json|jpg|jpeg|png|gif|svg|webp|woff|woff2|ttf|eot|ico|pdf|zip|map|gz)(\?.*)?$/i;
 const UT_SITEMAP_RE  = /sitemap/i;
 
 const UT_TSV_HEADERS = [
-  'From*', 'To*', 'redirect_status', 'categories', 'tags',
+  'From*', 'To*', 'redirect_status', 'category', 'tags',
 ];
 
 
@@ -30,7 +30,7 @@ function ut_detectBaseHost(lines) {
 
 /**
  * Clean a block of raw text into a deduplicated, filtered list of URLs.
- * Returns { clean: string[], dropped: object, baseHost: string }
+ * Returns { clean: string[], dropped: object }
  */
 function ut_cleanUrls(rawText) {
   const lines    = rawText.split(/[\n\r]+/).map(l => l.trim()).filter(Boolean);
@@ -54,43 +54,79 @@ function ut_cleanUrls(rawText) {
     clean.push(addr);
   }
 
-  return { clean, dropped, baseHost };
+  return { clean, dropped };
 }
 
 
 /* ── Stage 3: Classify & Tag ─────────────────────────────────────────────── */
 
-/* Convert capturing groups to non-capturing to avoid regex warnings. */
+/* Convert capturing groups to non-capturing to avoid regex warnings.
+ * This assumes patterns in rules.js use capturing groups (parentheses without ?:).
+ * Alternatively, write patterns as non-capturing (?:...) directly in rules.js.
+ */
 function ut_nc(pattern) {
   return pattern.replace(/\((?!\?)/g, '(?:');
 }
 
-function ut_classifyUrl(urlStr) {
-  const enabledDealers = Object.entries(RULES.dealers)
-    .filter(([, v]) => v)
-    .map(([k]) => k);
+/* Compiled regex cache - built once at module load */
+let classifyCache = null;
+let tagsCache = null;
 
+function ut_buildClassifyCache() {
+  const cache = {};
   for (const [catKey, catConfig] of Object.entries(RULES.categories)) {
     if (!catConfig.providers) continue;
-    for (const dealer of enabledDealers) {
+    cache[catKey] = [];
+    for (const dealer of Object.keys(RULES.dealers || {})) {
       const patterns = catConfig.providers[dealer];
       if (!patterns) continue;
       for (const pattern of Object.values(patterns)) {
-        if (new RegExp(ut_nc(pattern), 'i').test(urlStr)) return catKey;
+        try {
+          cache[catKey].push(new RegExp(ut_nc(pattern), 'i'));
+        } catch (e) {
+          console.warn(`Invalid pattern in ${catKey}/${dealer}:`, pattern, e);
+        }
       }
+    }
+  }
+  return cache;
+}
+
+function ut_buildTagsCache() {
+  const cache = {};
+  const tagRules = RULES.tags || {};
+  for (const [tag, config] of Object.entries(tagRules)) {
+    if (config.pattern) {
+      try {
+        cache[tag] = new RegExp(ut_nc(config.pattern), 'i');
+      } catch (e) {
+        console.warn(`Invalid pattern in tag ${tag}:`, config.pattern, e);
+      }
+    } else {
+      cache[tag] = null;
+    }
+  }
+  return cache;
+}
+
+function ut_classifyUrl(urlStr) {
+  if (!classifyCache) classifyCache = ut_buildClassifyCache();
+
+  for (const [catKey, regexes] of Object.entries(classifyCache)) {
+    for (const regex of regexes) {
+      if (regex.test(urlStr)) return catKey;
     }
   }
   return 'unclassified';
 }
 
 function ut_applyTags(urlStr) {
+  if (!tagsCache) tagsCache = ut_buildTagsCache();
   const tagRules = RULES.tags || {};
   const applied  = {};
 
-  for (const [tag, config] of Object.entries(tagRules)) {
-    applied[tag] = config.pattern
-      ? new RegExp(ut_nc(config.pattern), 'i').test(urlStr)
-      : false;
+  for (const [tag, regex] of Object.entries(tagsCache)) {
+    applied[tag] = regex ? regex.test(urlStr) : false;
   }
 
   for (const [tag, config] of Object.entries(tagRules)) {
@@ -170,12 +206,16 @@ function ut_dice(a, b) {
 /**
  * Find the closest CMS slug above the threshold (0–1).
  * Returns the best match string, or null.
+ *
+ * Performance note: O(n*m) where n=number of slugs, m=average slug length (bigram count).
+ * For 50k URLs × 10k CMS slugs, this can be 500M+ comparisons. If UI freezes on large datasets,
+ * consider: (1) adding progress reporting, (2) chunking into a Web Worker, or (3) reducing slug count.
  */
 function ut_fuzzyMatch(slug, cmsSlugs, threshold) {
   let best = null, bestScore = threshold;
   for (const candidate of cmsSlugs) {
     const score = ut_dice(slug, candidate);
-    if (score > bestScore) { bestScore = score; best = candidate; }
+    if (score >= bestScore) { bestScore = score; best = candidate; }
   }
   return best;
 }
