@@ -11,11 +11,7 @@
     "storage",
     "sidePanel",
     "commands",
-    "debugger",
-    "scripting",
-    "alarms",
-    "unlimitedStorage",
-    "downloads"
+    "scripting"
   ],
 
   "host_permissions": ["<all_urls>"],
