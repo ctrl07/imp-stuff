@@ -316,21 +316,52 @@ function initUrlTools() {
   el('op-use-sitemap')?.addEventListener('click', utUseSitemap);
   el('op-clean-classify')?.addEventListener('click', utCleanClassify);
   el('op-match-redirects')?.addEventListener('click', utRunMatchRedirects);
-  el('op-copy-tsv')?.addEventListener('click', utCopyTsv);
+  el('op-download-csv')?.addEventListener('click', utDownloadCsv);
+  el('ut-show-categories')?.addEventListener('change', () => {
+    if (utState.classified.length) utRenderCategoryBreakdown(utState.classified);
+  });
 
   const slider = el('fuzzy-threshold');
   const label  = el('threshold-label');
   slider?.addEventListener('input', () => { if (label) label.textContent = `${slider.value}%`; });
 }
 
-function utUseSitemap() {
+async function utUseSitemap() {
   if (!panel.sitemapLinks?.length) {
-    setUrlStatus('No sitemap data — run the Sitemap Crawler first.');
+    setUrlStatus('No sitemap data — crawling now...');
+    await crawlSitemapFromUrlTools();
     return;
   }
   const input = el('url-bulk-input');
   if (input) input.value = panel.sitemapLinks.join('\n');
   setUrlStatus(`Loaded ${panel.sitemapLinks.length} sitemap URLs.`);
+}
+
+async function crawlSitemapFromUrlTools() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const crawlUrl = tab?.url || '';
+  if (!crawlUrl) {
+    setUrlStatus('No URL to crawl.');
+    return;
+  }
+
+  panel.sitemapAbort = 'running';
+  try {
+    const links = await getAllSitemapLinks(crawlUrl);
+    panel.sitemapLinks = links;
+    if (links.length === 0) {
+      setUrlStatus('No sitemap URLs found.');
+      return;
+    }
+    const input = el('url-bulk-input');
+    if (input) input.value = links.join('\n');
+    setUrlStatus(`Crawled and loaded ${links.length} sitemap URLs.`);
+  } catch (err) {
+    console.warn('Sitemap crawl error:', err);
+    setUrlStatus('Crawl failed.');
+  } finally {
+    panel.sitemapAbort = false;
+  }
 }
 
 function utCleanClassify() {
@@ -359,6 +390,12 @@ function utRenderCategoryBreakdown(classified) {
   if (!container) return;
   container.innerHTML = '';
 
+  const showCats = el('ut-show-categories')?.checked;
+  if (!showCats) {
+    container.innerHTML = '<small style="color: var(--pico-muted-color)">Check "Show categories" to view breakdown</small>';
+    return;
+  }
+
   const groups   = ut_groupByCategory(classified);
   const catOrder = [...Object.keys(RULES.categories), 'unclassified'];
 
@@ -371,22 +408,12 @@ function utRenderCategoryBreakdown(classified) {
 
     const details = document.createElement('details');
     const summary = document.createElement('summary');
-
-    const titleSpan = document.createElement('span');
-    titleSpan.textContent = `${catLabel} (${items.length})`;
-
-    const copyBtn = document.createElement('button');
-    copyBtn.type = 'button';
-    copyBtn.className = 'outline secondary pico-btn-sm';
-    copyBtn.textContent = 'Copy';
-    copyBtn.addEventListener('click', e => { e.stopPropagation(); copyText(paths.join('\n'), catLabel); });
-
-    summary.appendChild(titleSpan);
-    summary.appendChild(copyBtn);
+    summary.textContent = `${catLabel} (${items.length})`;
 
     const pre = document.createElement('pre');
     pre.className = 'code-block';
     pre.textContent = paths.join('\n');
+    pre.addEventListener('click', () => copyText(paths.join('\n'), catLabel));
 
     details.appendChild(summary);
     details.appendChild(pre);
@@ -419,9 +446,17 @@ function utRunMatchRedirects() {
   setUrlStatus('Done. Copy TSV to paste into Excel.');
 }
 
-function utCopyTsv() {
-  if (!utState.results.length) { setUrlStatus('No results to copy.'); return; }
-  navigator.clipboard.writeText(ut_toTsv(utState.results))
-    .then(() => setUrlStatus('TSV copied.'))
-    .catch(() => setUrlStatus('Copy failed.'));
+function utDownloadCsv() {
+  if (!utState.results.length) { setUrlStatus('No results to download.'); return; }
+  const csv = ut_toTsv(utState.results).replace(/\t/g, ',');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `redirects-${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setUrlStatus('CSV downloaded.');
 }

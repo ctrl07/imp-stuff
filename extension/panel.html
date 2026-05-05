@@ -130,6 +130,12 @@
       line-height: 1.4;
     }
 
+    summary h3 {
+      margin: 0 !important;
+      font-size: 1rem !important;
+      display: inline !important;
+    }
+
     .code-block {
       margin: 0.4rem 0 0;
       padding: 0.75rem 0.85rem;
@@ -156,16 +162,29 @@
     }
 
     #ut-category-breakdown summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
       cursor: pointer;
       user-select: none;
+      font-weight: 500;
     }
 
-    #ut-category-breakdown summary button {
-      margin: 0;
+    #ut-category-breakdown pre {
+      cursor: pointer;
+      margin-top: 0.4rem;
+    }
+
+    .tsv-output {
+      display: grid;
+      padding: 0 !important;
+      background: none !important;
+      border: 1px solid var(--pico-card-border-color);
+    }
+
+    .tsv-output > * {
+      border-right: 1px solid var(--pico-card-border-color);
+      border-bottom: 1px solid var(--pico-card-border-color);
+      padding: 0.5rem;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
 
@@ -305,28 +324,28 @@
 
       <details id="page-url-details" open>
         <summary class="section-summary">
-          <strong id="page-url-label">Page URL</strong>
+          <h3 id="page-url-label">Page URL</h3>
         </summary>
         <pre id="page-url" class="code-block">No page data yet.</pre>
       </details>
 
       <details id="page-title-details" open>
         <summary class="section-summary">
-          <strong id="page-title-label">Title</strong>
+          <h3 id="page-title-label">Title</h3>
         </summary>
         <pre id="page-title" class="code-block">None</pre>
       </details>
 
       <details id="page-description-details" open>
         <summary class="section-summary">
-          <strong id="page-description-label">Description</strong>
+          <h3 id="page-description-label">Description</h3>
         </summary>
         <pre id="page-description" class="code-block">None</pre>
       </details>
 
       <details id="provider-details" open>
         <summary class="section-summary">
-          <strong id="provider-label">Provider</strong>
+          <h3 id="provider-label">Provider</h3>
         </summary>
         <pre id="provider-name" class="code-block">None detected.</pre>
         <small id="provider-confidence" class="hidden"></small>
@@ -334,42 +353,42 @@
 
       <details id="phones-details">
         <summary class="section-summary">
-          <strong id="phones-label">Phones (0)</strong>
+          <h3 id="phones-label">Phones (0)</h3>
         </summary>
         <pre id="phones-block" class="code-block">No phones found.</pre>
       </details>
 
       <details id="analytics-details">
         <summary class="section-summary">
-          <strong id="analytics-label">Analytics (0)</strong>
+          <h3 id="analytics-label">Analytics (0)</h3>
         </summary>
         <pre id="analytics-block" class="code-block">No analytics codes found.</pre>
       </details>
 
       <details id="links-details">
         <summary class="section-summary">
-          <strong id="links-label">Links (0)</strong>
+          <h3 id="links-label">Links (0)</h3>
         </summary>
         <pre id="links-block" class="code-block">No links found.</pre>
       </details>
 
       <details id="scripts-details">
         <summary class="section-summary">
-          <strong id="scripts-label">Scripts (0)</strong>
+          <h3 id="scripts-label">Scripts (0)</h3>
         </summary>
         <pre id="scripts-block" class="code-block">No scripts found.</pre>
       </details>
 
       <details id="slugs-details">
         <summary class="section-summary">
-          <strong id="slugs-label">Slugs (0)</strong>
+          <h3 id="slugs-label">Slugs (0)</h3>
         </summary>
         <pre id="slugs-block" class="code-block">No slugs found.</pre>
       </details>
 
       <details id="sitemap-links-details">
         <summary class="section-summary">
-          <strong id="sitemap-links-label">Sitemap URLs (0)</strong>
+          <h3 id="sitemap-links-label">Sitemap URLs (0)</h3>
         </summary>
         <pre id="sitemap-links-block" class="code-block">Click to expand and crawl sitemap...</pre>
       </details>
@@ -386,8 +405,13 @@
 
         <div class="ops-row">
           <button type="button" class="outline secondary pico-btn-sm" id="op-use-sitemap">Use Sitemap Results</button>
-          <button type="button" class="outline secondary pico-btn-sm" id="op-clean-classify">Clean &amp; Classify</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="op-clean-classify">Clean</button>
         </div>
+
+        <label style="margin-top: 0.6rem">
+          <input type="checkbox" id="ut-show-categories">
+          Show categories
+        </label>
 
         <small id="url-status"></small>
 
@@ -418,8 +442,8 @@
         <section id="ut-redirect-section" class="hidden">
           <h3 id="ut-redirect-summary"></h3>
           <div class="code-wrap">
-            <button type="button" class="inner-copy-btn" id="op-copy-tsv">Copy</button>
-            <pre id="ut-tsv-output" class="code-block" style="max-height:300px"></pre>
+            <button type="button" class="inner-copy-btn" id="op-download-csv">CSV</button>
+            <pre id="ut-tsv-output" class="code-block tsv-output" style="max-height:300px"></pre>
           </div>
         </section>
       </form>
