@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="pico.min.css">
   <script src="panel.js" defer></script>
   <script src="url-opener-panel.js" defer></script>
+  <script src="tools-panel.js" defer></script>
   <style>
     :root {
       --pico-font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -325,6 +326,7 @@
   <main>
     <nav class="page-tabs" role="tablist">
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
+      <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
     </nav>
 
     <div id="page-url-opener" class="page">
@@ -333,6 +335,44 @@
         <input type="text" id="uo-id-input" placeholder="Enter dealer ID…" autocomplete="off">
       </fieldset>
       <div id="uo-buttons" class="ops-row"></div>
+    </div>
+
+    <div id="page-tools" class="page hidden">
+
+      <!-- Tool 1: Page Links -->
+      <fieldset>
+        <legend>Page Links</legend>
+        <div class="ops-row">
+          <button type="button" class="outline secondary pico-btn-sm" id="tp-export-links">Export Links</button>
+        </div>
+        <small id="tp-links-status"></small>
+      </fieldset>
+
+      <hr>
+
+      <!-- Tool 2: Sitemap XML -->
+      <fieldset>
+        <legend>Sitemap XML</legend>
+        <textarea id="tp-sitemap-input" class="tool-textarea" placeholder="Paste sitemap XML…" spellcheck="false"></textarea>
+        <div class="ops-row">
+          <button type="button" class="outline secondary pico-btn-sm" id="tp-parse-sitemap">Parse</button>
+        </div>
+        <small id="tp-sitemap-status"></small>
+      </fieldset>
+
+      <hr>
+
+      <!-- Tool 3: WordPress XML → CSV -->
+      <fieldset>
+        <legend>WordPress Export → CSV</legend>
+        <input type="file" id="tp-wp-file" accept=".xml" style="display:none">
+        <div class="ops-row">
+          <label for="tp-wp-file" class="outline secondary pico-btn-sm" id="tp-wp-label" style="cursor:pointer;margin:0">Choose file</label>
+          <button type="button" class="outline secondary pico-btn-sm" id="tp-convert-wp" disabled>Convert</button>
+        </div>
+        <small id="tp-wp-status"></small>
+      </fieldset>
+
     </div>
 
   </main>
