@@ -10,6 +10,7 @@
   <script src="panel.js" defer></script>
   <script src="url-opener-panel.js" defer></script>
   <script src="tools-panel.js" defer></script>
+  <script src="compare-panel.js" defer></script>
   <style>
     :root {
       --pico-font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -325,6 +326,26 @@
       min-height: 180px;
       margin-top: 0.5rem;
     }
+
+    /* Compare */
+
+    .cp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--pico-card-border-color);
+    }
+
+    .cp-label {
+      font-size: var(--small-font-size);
+      color: var(--pico-muted-color);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -332,6 +353,7 @@
     <nav class="page-tabs" role="tablist">
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
+      <button class="page-tab" data-page="compare" role="tab" aria-selected="false" aria-controls="page-compare">Migrate [WIP]</button>
     </nav>
 
     <div id="page-url-opener" class="page">
@@ -380,6 +402,18 @@
         <small id="tp-wp-status"></small>
       </fieldset>
 
+    </div>
+
+    <div id="page-compare" class="page hidden">
+      <fieldset>
+        <legend>URL Map</legend>
+        <input type="file" id="cp-file" accept=".csv" style="display:none">
+        <div class="ops-row">
+          <label for="cp-file" class="outline secondary pico-btn-sm" id="cp-file-label" style="cursor:pointer;margin:0">Choose CSV</label>
+        </div>
+        <small id="cp-status"></small>
+      </fieldset>
+      <div id="cp-list"></div>
     </div>
 
   </main>

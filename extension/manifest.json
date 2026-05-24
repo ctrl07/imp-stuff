@@ -11,7 +11,8 @@
     "storage",
     "sidePanel",
     "commands",
-    "scripting"
+    "scripting",
+    "windows"
   ],
 
   "host_permissions": ["<all_urls>"],
