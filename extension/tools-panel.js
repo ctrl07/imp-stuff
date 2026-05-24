@@ -155,9 +155,60 @@ function convertWp() {
   reader.readAsText(file);
 }
 
+// ── Tool 0: Anchor Tag Outliner ────────────────────────────────────────────────
+
+function setLinkOutline(enabled) {
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (!tab) return;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (enable) => {
+        const STYLE_ID = 'tars-link-outline';
+        if (!enable) {
+          document.getElementById(STYLE_ID)?.remove();
+          return;
+        }
+        if (document.getElementById(STYLE_ID)) return;
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+          a[href] {
+            outline: 2px solid #f5a623 !important;
+            outline-offset: 2px !important;
+          }
+          a[href]::after {
+            content: ' ' attr(href);
+            font-size: 10px !important;
+            font-family: monospace !important;
+            color: #f5a623 !important;
+            word-break: break-all !important;
+            display: inline !important;
+          }
+        `;
+        document.head.appendChild(style);
+      },
+      args: [enabled],
+    });
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  const outlineCheckbox = document.getElementById('tp-outline-links');
+  outlineCheckbox.addEventListener('change', () => {
+    setLinkOutline(outlineCheckbox.checked);
+    setStatus('tp-outline-status', outlineCheckbox.checked ? 'Links outlined on page.' : '');
+  });
+
+  // Reset checkbox if the active tab navigates away
+  chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+    if (changeInfo.status === 'loading' && outlineCheckbox.checked) {
+      outlineCheckbox.checked = false;
+      setStatus('tp-outline-status', '');
+    }
+  });
+
   document.getElementById('tp-export-links').addEventListener('click', exportPageLinks);
   document.getElementById('tp-parse-sitemap').addEventListener('click', parseSitemap);
 

@@ -328,6 +328,25 @@
       margin-top: 0.5rem;
     }
 
+    /* Toggle label */
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: var(--small-font-size);
+      cursor: pointer;
+      margin: 0;
+      user-select: none;
+    }
+
+    .toggle-label input[type="checkbox"] {
+      margin: 0;
+      width: 1.1rem;
+      height: 1.1rem;
+      flex-shrink: 0;
+    }
+
     /* Settings */
 
     .settings-row {
@@ -384,6 +403,18 @@
     </div>
 
     <div id="page-tools" class="page hidden">
+
+      <!-- Tool 0: Anchor Tag Outliner -->
+      <fieldset>
+        <legend>Anchor Tags</legend>
+        <label class="toggle-label">
+          <input type="checkbox" id="tp-outline-links" role="switch">
+          <span>Outline links on page</span>
+        </label>
+        <small id="tp-outline-status"></small>
+      </fieldset>
+
+      <hr>
 
       <!-- Tool 1: Page Links -->
       <fieldset>
