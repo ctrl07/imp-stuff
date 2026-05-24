@@ -7,9 +7,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="pico.min.css">
-  <script src="rules.js" defer></script>
-  <script src="url-tool.js" defer></script>
   <script src="panel.js" defer></script>
+  <script src="url-opener-panel.js" defer></script>
   <style>
     :root {
       --pico-font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -324,149 +323,18 @@
 </head>
 <body>
   <main>
-    <!-- <header>
-      <h1>TARS</h1>
-    </header> -->
-
     <nav class="page-tabs" role="tablist">
-      <button class="page-tab active" data-page="inspector" role="tab" aria-selected="true" aria-controls="page-inspector">Inspector</button>
-      <button class="page-tab" data-page="url-tools" role="tab" aria-selected="false" aria-controls="page-url-tools">URL Tools</button>
+      <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
     </nav>
 
-    <div id="page-inspector" class="page">
-      <div class="inspector-bar">
-        <small id="status">Ready.</small>
-        <button id="refresh-button" type="button">Refresh</button>
-      </div>
-
-      <details id="page-url-details" open>
-        <summary class="section-summary">
-          <span class="section-title" id="page-url-label">Page URL</span>
-        </summary>
-        <pre id="page-url" class="code-block">No page data yet.</pre>
-      </details>
-
-      <details id="page-title-details" open>
-        <summary class="section-summary">
-          <span class="section-title" id="page-title-label">Title</span>
-        </summary>
-        <pre id="page-title" class="code-block">None</pre>
-      </details>
-
-      <details id="page-description-details" open>
-        <summary class="section-summary">
-          <span class="section-title" id="page-description-label">Description</span>
-        </summary>
-        <pre id="page-description" class="code-block">None</pre>
-      </details>
-
-      <details id="provider-details" open>
-        <summary class="section-summary">
-          <span class="section-title" id="provider-label">Provider</span>
-        </summary>
-        <pre id="provider-name" class="code-block">None detected.</pre>
-        <small id="provider-confidence" class="hidden"></small>
-      </details>
-
-      <details id="phones-details">
-        <summary class="section-summary">
-          <span class="section-title" id="phones-label">Phones (0)</span>
-        </summary>
-        <pre id="phones-block" class="code-block">No phones found.</pre>
-      </details>
-
-      <details id="analytics-details">
-        <summary class="section-summary">
-          <span class="section-title" id="analytics-label">Analytics (0)</span>
-        </summary>
-        <pre id="analytics-block" class="code-block">No analytics codes found.</pre>
-      </details>
-
-      <details id="links-details">
-        <summary class="section-summary">
-          <span class="section-title" id="links-label">Links (0)</span>
-        </summary>
-        <pre id="links-block" class="code-block">No links found.</pre>
-      </details>
-
-      <details id="scripts-details">
-        <summary class="section-summary">
-          <span class="section-title" id="scripts-label">Scripts (0)</span>
-        </summary>
-        <pre id="scripts-block" class="code-block">No scripts found.</pre>
-      </details>
-
-      <details id="slugs-details">
-        <summary class="section-summary">
-          <span class="section-title" id="slugs-label">Slugs (0)</span>
-        </summary>
-        <pre id="slugs-block" class="code-block">No slugs found.</pre>
-      </details>
-
-      <details id="sitemap-links-details">
-        <summary class="section-summary">
-          <span class="section-title" id="sitemap-links-label">Sitemap URLs (0)</span>
-          <button type="button" class="outline secondary pico-btn-sm" id="op-crawl-sitemap-inspector">Crawl</button>
-        </summary>
-        <pre id="sitemap-links-block" class="code-block">Click to expand and crawl sitemap...</pre>
-      </details>
-    </div>
-
-    <!-- URL Clean/Tag -->
-    <div id="page-url-tools" class="page hidden">
-      <form id="ut-form">
-        <!-- Input URLs -->
-        <h3 class="ut-section-title">URLs</h3>
-        <textarea id="url-bulk-input" class="tool-textarea" placeholder="Paste URLs — one per line…" spellcheck="false"></textarea>
-
-        <div class="ops-row">
-          <button type="button" class="outline secondary pico-btn-sm" id="op-crawl-sitemap-tools">Crawl Sitemap</button>
-          <button type="button" class="outline secondary pico-btn-sm" id="op-use-sitemap">Use Results</button>
-          <button type="button" class="outline secondary pico-btn-sm" id="op-clean-classify">Clean</button>
-        </div>
-
-        <label class="ut-label-spaced">
-          <input type="checkbox" id="ut-show-categories">
-          Show categories
-        </label>
-
-        <small id="url-status" aria-live="polite" aria-atomic="true"></small>
-
-        <!-- Classify results & CMS slug input -->
-        <section id="ut-classify-section" class="hidden">
-          <h4 id="ut-classify-summary"></h4>
-          <div id="ut-category-breakdown"></div>
-
-          <h3 class="ut-section-title-spaced">Staging Slugs</h3>
-          <textarea id="cms-slug-input" class="tool-textarea" placeholder="Paste CMS slugs — one per line…" spellcheck="false"></textarea>
-
-          <fieldset class="fieldset-compact">
-            <legend>Matching Options</legend>
-
-            <div class="slider-row">
-              <label for="fuzzy-threshold">Match threshold</label>
-              <div class="slider-group">
-                <input type="range" id="fuzzy-threshold" min="0" max="100" value="65" step="5">
-                <span id="threshold-label">65%</span>
-              </div>
-            </div>
-
-            <div class="ops-row">
-              <button type="button" class="outline secondary pico-btn-sm" id="op-match-redirects">Match</button>
-              <button type="button" class="outline secondary pico-btn-sm hidden" id="op-download-tsv">TSV</button>
-              <button type="button" class="outline secondary pico-btn-sm hidden" id="op-download-csv">CSV</button>
-            </div>
-          </fieldset>
-        </section>
-
-        <!-- Redirect summary only -->
-        <div id="ut-redirect-section" class="hidden">
-          <h4 id="ut-redirect-summary"></h4>
-        </div>
-      </form>
+    <div id="page-url-opener" class="page">
+      <fieldset>
+        <legend>Dealer ID</legend>
+        <input type="text" id="uo-id-input" placeholder="Enter dealer ID…" autocomplete="off">
+      </fieldset>
+      <div id="uo-buttons" class="ops-row"></div>
     </div>
 
   </main>
-  <!-- <script src="scrape-panel.js" defer></script> --> <!-- Scrape: disabled for now, kept for future use -->
 </body>
 </html>

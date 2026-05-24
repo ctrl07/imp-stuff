@@ -13,3 +13,6 @@ extension/wayback-panel.zip
 *.p12
 *.pfx
 *.jks
+CLAUDE.md
+extension/way.py
+extension/links.txt
