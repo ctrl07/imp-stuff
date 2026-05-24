@@ -320,6 +320,11 @@
     .inner-copy-btn:hover {
       background: var(--pico-card-border-color);
     }
+
+    .scratch-pad {
+      min-height: 180px;
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -335,6 +340,8 @@
         <input type="text" id="uo-id-input" placeholder="Enter dealer ID…" autocomplete="off">
       </fieldset>
       <div id="uo-buttons" class="ops-row"></div>
+      <hr>
+      <textarea class="tool-textarea scratch-pad" placeholder="Scratch pad…" spellcheck="false"></textarea>
     </div>
 
     <div id="page-tools" class="page hidden">
