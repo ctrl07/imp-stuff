@@ -37,7 +37,7 @@ function renderButtons(input) {
   URL_TEMPLATES.forEach(template => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'outline secondary pico-btn-sm';
+    btn.className = 'outline secondary pico-btn-sm tmpl-btn';
     btn.textContent = template.label;
     btn.disabled = needsId(template); // enabled immediately if no {id}
 
@@ -53,8 +53,45 @@ function renderButtons(input) {
 
 function syncButtons(input) {
   const hasId = input.value.trim().length > 0;
-  document.querySelectorAll('#uo-buttons button').forEach((btn, i) => {
+  // Only sync template buttons (skip the trailing Download URLs button)
+  document.querySelectorAll('#uo-buttons button.tmpl-btn').forEach((btn, i) => {
     btn.disabled = needsId(URL_TEMPLATES[i]) && !hasId;
+  });
+}
+
+function downloadSiteContentCsv() {
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    if (!tab) return;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const rows = document.querySelectorAll('#mainTable tbody tr');
+        const out = [['Page Title', 'Slug']];
+
+        rows.forEach(row => {
+          const select = row.querySelector('select[id^="pageStatus-"]');
+          if (select && parseInt(select.value, 10) === 0) return;
+
+          const titleEl = row.querySelector('strong') || row.querySelector('b');
+          const slugEl  = [...row.querySelectorAll('em')].find(e => e.style.float === 'right');
+
+          if (!titleEl) return;
+
+          const title = titleEl.textContent.trim();
+          const slug  = slugEl ? slugEl.textContent.trim() : '';
+          const esc   = s => `"${s.replace(/"/g, '""')}"`;
+
+          out.push([esc(title), esc(slug)]);
+        });
+
+        const csv = out.map(r => r.join(',')).join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = 'sitecontent.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      },
+    });
   });
 }
 
@@ -62,6 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('uo-id-input');
 
   renderButtons(input);
+
+  // Download URLs button (not a URL template — always enabled)
+  const dlBtn = document.createElement('button');
+  dlBtn.type = 'button';
+  dlBtn.className = 'outline secondary pico-btn-sm';
+  dlBtn.textContent = 'Download URLs';
+  dlBtn.addEventListener('click', downloadSiteContentCsv);
+  document.getElementById('uo-buttons').appendChild(dlBtn);
 
   input.addEventListener('input', () => syncButtons(input));
 
