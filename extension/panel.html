@@ -18,6 +18,10 @@
       --small-font-size: 0.85rem;
     }
 
+    body {
+      background: var(--tars-bg, var(--pico-background-color));
+    }
+
     code, pre, kbd, textarea {
       font-family: "JetBrains Mono", "Courier New", monospace;
     }
@@ -75,7 +79,7 @@
 
     .page-tab.active {
       background: var(--pico-card-background-color);
-      color: var(--pico-color);
+      color: var(--tars-accent, var(--pico-color));
     }
 
     .page-tab:hover:not(.active) {
@@ -140,7 +144,7 @@
       font-size: 0.88rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--pico-muted-color);
+      color: var(--tars-accent, var(--pico-muted-color));
       margin-bottom: 0.45rem;
       padding: 0;
       width: auto;
@@ -302,7 +306,7 @@
 
     input[type="range"] {
       width: 110px;
-      accent-color: var(--pico-color);
+      accent-color: var(--tars-accent, var(--pico-color));
       cursor: pointer;
     }
 
@@ -574,6 +578,28 @@
             <input type="checkbox" id="st-mute-toast" role="switch" style="margin:0">
           </label>
         </div>
+        <div class="ops-row" style="margin-top:0.6rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="st-check-btn">Check for updates</button>
+        </div>
+        <small id="st-update-status"></small>
+        <div id="st-download-row" class="ops-row hidden">
+          <a id="st-download-link" class="outline secondary pico-btn-sm" style="text-decoration:none" target="_blank" rel="noopener">Download update</a>
+        </div>
+      </fieldset>
+      <fieldset id="st-theme-fieldset" class="hidden">
+        <legend>Theme</legend>
+        <div class="settings-row">
+          <span>Background color</span>
+          <input type="color" id="st-bg-color" value="#13191f" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+        </div>
+        <div class="settings-row">
+          <span>Accent color</span>
+          <input type="color" id="st-accent-color" value="#e8e8e8" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+        </div>
+        <div class="settings-row">
+          <span>Link outline color</span>
+          <input type="color" id="st-outline-color" value="#f5a623" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+        </div>
         <div class="settings-row">
           <span>Alt present color</span>
           <input type="color" id="st-alt-has-color" value="#4caf50" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
@@ -582,12 +608,8 @@
           <span>Alt missing color</span>
           <input type="color" id="st-alt-no-color" value="#f44336" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
         </div>
-        <div class="ops-row" style="margin-top:0.6rem">
-          <button type="button" class="outline secondary pico-btn-sm" id="st-check-btn">Check for updates</button>
-        </div>
-        <small id="st-update-status"></small>
-        <div id="st-download-row" class="ops-row hidden">
-          <a id="st-download-link" class="outline secondary pico-btn-sm" style="text-decoration:none" target="_blank" rel="noopener">Download update</a>
+        <div class="ops-row" style="margin-top:0.4rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="st-reset-theme">Reset theme</button>
         </div>
       </fieldset>
     </div>

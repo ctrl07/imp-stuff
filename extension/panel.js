@@ -56,13 +56,15 @@ function showToast(msg, type = 'info', duration = 3000) {
 
   function applyBetaFeatures(enabled) {
     const tab = document.getElementById('tab-compare');
-    if (!tab) return;
+    const themeFieldset = document.getElementById('st-theme-fieldset');
     if (enabled) {
-      tab.classList.remove('hidden');
+      tab?.classList.remove('hidden');
+      themeFieldset?.classList.remove('hidden');
     } else {
-      tab.classList.add('hidden');
+      tab?.classList.add('hidden');
+      themeFieldset?.classList.add('hidden');
       // If currently on a beta tab, fall back to Launch
-      if (tab.classList.contains('active')) {
+      if (tab?.classList.contains('active')) {
         tab.classList.remove('active');
         tab.setAttribute('aria-selected', 'false');
         document.getElementById('page-compare')?.classList.add('hidden');
@@ -72,18 +74,40 @@ function showToast(msg, type = 'info', duration = 3000) {
     }
   }
 
+  function applyAccent(color) {
+    const root = document.documentElement;
+    if (color) {
+      root.style.setProperty('--tars-accent', color);
+      root.style.setProperty('--pico-primary', color);
+      root.style.setProperty('--pico-secondary', color);
+    }
+  }
+
+  function applyBg(color) {
+    const root = document.documentElement;
+    if (color) {
+      root.style.setProperty('--tars-bg', color);
+      root.style.setProperty('--pico-background-color', color);
+      root.style.setProperty('--pico-card-background-color', color);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
 
-    chrome.storage.sync.get(['muteToast', 'betaFeatures'], ({ muteToast, betaFeatures }) => {
+    chrome.storage.sync.get(['muteToast', 'betaFeatures', 'accentColor', 'bgColor'], ({ muteToast, betaFeatures, accentColor, bgColor }) => {
       _muteToast = !!muteToast;
       applyBetaFeatures(!!betaFeatures);
+      applyAccent(accentColor);
+      applyBg(bgColor);
     });
 
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'sync') return;
       if ('muteToast' in changes) _muteToast = !!changes.muteToast.newValue;
       if ('betaFeatures' in changes) applyBetaFeatures(!!changes.betaFeatures.newValue);
+      if ('accentColor' in changes) applyAccent(changes.accentColor.newValue);
+      if ('bgColor' in changes) applyBg(changes.bgColor.newValue);
     });
   });
 })();

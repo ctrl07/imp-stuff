@@ -161,120 +161,121 @@
 
   // ── Tool 0: Anchor Tag Outliner ─────────────────────────────────────────────
 
-  function setLinkOutline(enabled) {
-    chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
-      if (!tab) return;
+  async function setLinkOutline(enabled) {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
 
-      if (enabled) {
-        try {
-          const hostname = new URL(tab.url).hostname;
-          if (hostname === 'cms.dealeron.com') {
-            const { allowCmsOutline } = await chrome.storage.sync.get('allowCmsOutline');
-            if (!allowCmsOutline) {
-              document.getElementById('tp-outline-links').checked = false;
-              setStatus('tp-outline-status', '');
-              showToast('Link outliner is turned off for the CMS — enable it in Settings.', 'warning');
-              return;
-            }
+    if (enabled) {
+      try {
+        const hostname = new URL(tab.url).hostname;
+        if (hostname === 'cms.dealeron.com') {
+          const { allowCmsOutline } = await chrome.storage.sync.get('allowCmsOutline');
+          if (!allowCmsOutline) {
+            document.getElementById('tp-outline-links').checked = false;
+            setStatus('tp-outline-status', '');
+            showToast('Link outliner is turned off for the CMS — enable it in Settings.', 'warning');
+            return;
           }
-        } catch { /* non-http tabs (e.g. chrome://) — fall through to scripting error */ }
-      }
+        }
+      } catch { /* non-http tabs (e.g. chrome://) — fall through to scripting error */ }
+    }
 
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (enable) => {
-          const STYLE_ID = 'tars-link-outline';
+    const { outlineColor = '#f5a623' } = await chrome.storage.sync.get('outlineColor');
 
-          // Always clean up first
-          document.querySelectorAll('.tars-link-hint').forEach(el => el.remove());
-          document.getElementById(STYLE_ID)?.remove();
-          if (!enable) return;
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (enable, color) => {
+        const STYLE_ID = 'tars-link-outline';
 
-          // Styles for outline + hint chips
-          const style = document.createElement('style');
-          style.id = STYLE_ID;
-          style.textContent = `
-            a[href] {
-              outline: 2px solid #f5a623 !important;
-              outline-offset: 2px !important;
-            }
-            .tars-link-hint {
-              display: inline-flex !important;
-              align-items: center !important;
-              gap: 2px !important;
-              background: rgba(18, 18, 18, 0.93) !important;
-              border: 1px solid #f5a623 !important;
-              color: #f5a623 !important;
-              font-size: 10px !important;
-              font-family: monospace !important;
-              line-height: 1.4 !important;
-              padding: 1px 3px 1px 4px !important;
-              border-radius: 3px !important;
-              vertical-align: middle !important;
-              max-width: 220px !important;
-              margin-left: 3px !important;
-              pointer-events: auto !important;
-              z-index: 999999 !important;
-              position: relative !important;
-            }
-            .tars-link-hint-text {
-              overflow: hidden !important;
-              text-overflow: ellipsis !important;
-              white-space: nowrap !important;
-              max-width: 160px !important;
-            }
-            .tars-link-hint-copy {
-              display: inline-block !important;
-              background: #2a2a2a !important;
-              color: #999 !important;
-              border: none !important;
-              border-radius: 2px !important;
-              font-size: 9px !important;
-              font-family: monospace !important;
-              padding: 0 4px !important;
-              line-height: 1.7 !important;
-              cursor: pointer !important;
-              flex-shrink: 0 !important;
-            }
-            .tars-link-hint-copy:hover {
-              background: #444 !important;
-              color: #fff !important;
-            }
-          `;
-          document.head.appendChild(style);
+        // Always clean up first
+        document.querySelectorAll('.tars-link-hint').forEach(el => el.remove());
+        document.getElementById(STYLE_ID)?.remove();
+        if (!enable) return;
 
-          // Inject a hint chip after every link
-          document.querySelectorAll('a[href]').forEach(a => {
-            const href = a.getAttribute('href');
-            if (!href || href.startsWith('javascript:') || href === '#') return;
+        // Styles for outline + hint chips
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+          a[href] {
+            outline: 2px solid ${color} !important;
+            outline-offset: 2px !important;
+          }
+          .tars-link-hint {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 2px !important;
+            background: rgba(18, 18, 18, 0.93) !important;
+            border: 1px solid ${color} !important;
+            color: ${color} !important;
+            font-size: 10px !important;
+            font-family: monospace !important;
+            line-height: 1.4 !important;
+            padding: 1px 3px 1px 4px !important;
+            border-radius: 3px !important;
+            vertical-align: middle !important;
+            max-width: 220px !important;
+            margin-left: 3px !important;
+            pointer-events: auto !important;
+            z-index: 999999 !important;
+            position: relative !important;
+          }
+          .tars-link-hint-text {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+            max-width: 160px !important;
+          }
+          .tars-link-hint-copy {
+            display: inline-block !important;
+            background: #2a2a2a !important;
+            color: #999 !important;
+            border: none !important;
+            border-radius: 2px !important;
+            font-size: 9px !important;
+            font-family: monospace !important;
+            padding: 0 4px !important;
+            line-height: 1.7 !important;
+            cursor: pointer !important;
+            flex-shrink: 0 !important;
+          }
+          .tars-link-hint-copy:hover {
+            background: #444 !important;
+            color: #fff !important;
+          }
+        `;
+        document.head.appendChild(style);
 
-            const hint = document.createElement('span');
-            hint.className = 'tars-link-hint';
+        // Inject a hint chip after every link
+        document.querySelectorAll('a[href]').forEach(a => {
+          const href = a.getAttribute('href');
+          if (!href || href.startsWith('javascript:') || href === '#') return;
 
-            const text = document.createElement('span');
-            text.className = 'tars-link-hint-text';
-            text.textContent = href.length > 38 ? href.slice(0, 37) + '…' : href;
-            text.title = href;
+          const hint = document.createElement('span');
+          hint.className = 'tars-link-hint';
 
-            const btn = document.createElement('button');
-            btn.className = 'tars-link-hint-copy';
-            btn.textContent = 'copy';
-            btn.addEventListener('click', e => {
-              e.preventDefault();
-              e.stopPropagation();
-              navigator.clipboard.writeText(href).then(() => {
-                btn.textContent = '✓';
-                setTimeout(() => { btn.textContent = 'copy'; }, 1200);
-              });
+          const text = document.createElement('span');
+          text.className = 'tars-link-hint-text';
+          text.textContent = href.length > 38 ? href.slice(0, 37) + '…' : href;
+          text.title = href;
+
+          const btn = document.createElement('button');
+          btn.className = 'tars-link-hint-copy';
+          btn.textContent = 'copy';
+          btn.addEventListener('click', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigator.clipboard.writeText(href).then(() => {
+              btn.textContent = '✓';
+              setTimeout(() => { btn.textContent = 'copy'; }, 1200);
             });
-
-            hint.appendChild(text);
-            hint.appendChild(btn);
-            a.insertAdjacentElement('afterend', hint);
           });
-        },
-        args: [enabled],
-      });
+
+          hint.appendChild(text);
+          hint.appendChild(btn);
+          a.insertAdjacentElement('afterend', hint);
+        });
+      },
+      args: [enabled, outlineColor],
     });
   }
 
