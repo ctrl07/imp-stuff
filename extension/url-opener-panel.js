@@ -22,6 +22,9 @@
   ];
   // ─────────────────────────────────────────────────────────────────────────────
 
+  let customTemplates  = [];
+  let showDownloadUrls = true;
+
   function openUrl(template, id) {
     const url = template.url.replace('{id}', encodeURIComponent(id));
     chrome.tabs.create({ url, active: true });
@@ -31,34 +34,96 @@
     return template.url.includes('{id}');
   }
 
-  function renderButtons(input) {
+  // ── Button factory ────────────────────────────────────────────────────────
+
+  function makeTemplateBtn(template, input) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'outline secondary pico-btn-sm tmpl-btn';
+    btn.textContent = template.label;
+    btn.dataset.needsId = needsId(template) ? '1' : '0';
+    btn.disabled = needsId(template) && !input.value.trim();
+    btn.addEventListener('click', () => {
+      const id = input.value.trim();
+      if (needsId(template) && !id) return;
+      openUrl(template, id);
+    });
+    return btn;
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  function renderAllButtons(input) {
     const container = document.getElementById('uo-buttons');
     container.innerHTML = '';
 
+    // Built-in template buttons
     URL_TEMPLATES.forEach(template => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'outline secondary pico-btn-sm tmpl-btn';
-      btn.textContent = template.label;
-      btn.disabled = needsId(template); // enabled immediately if no {id}
+      container.appendChild(makeTemplateBtn(template, input));
+    });
 
-      btn.addEventListener('click', () => {
-        const id = input.value.trim();
-        if (needsId(template) && !id) return;
-        openUrl(template, id);
+    // Custom template buttons with delete (×)
+    customTemplates.forEach((template, index) => {
+      const wrap = document.createElement('span');
+      wrap.style.cssText = 'display:inline-flex;align-items:stretch';
+
+      const btn = makeTemplateBtn(template, input);
+      btn.style.borderRadius = '0.35rem 0 0 0.35rem';
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'outline secondary pico-btn-sm';
+      del.textContent = '×';
+      del.title = `Remove "${template.label}"`;
+      del.style.cssText = [
+        'padding:0.22rem 0.45rem',
+        'margin-left:-1px',
+        'border-radius:0 0.35rem 0.35rem 0',
+        'color:var(--pico-muted-color)',
+      ].join(';');
+      del.addEventListener('click', () => {
+        customTemplates.splice(index, 1);
+        chrome.storage.sync.set({ customTemplates });
+        renderAllButtons(input);
       });
 
-      container.appendChild(btn);
+      wrap.appendChild(btn);
+      wrap.appendChild(del);
+      container.appendChild(wrap);
     });
+
+    // Download URLs button (visibility controlled by setting)
+    if (showDownloadUrls) {
+      const dlBtn = document.createElement('button');
+      dlBtn.type = 'button';
+      dlBtn.className = 'outline secondary pico-btn-sm';
+      dlBtn.textContent = 'Download URLs';
+      dlBtn.addEventListener('click', downloadSiteContentCsv);
+      container.appendChild(dlBtn);
+    }
+
+    // + button to open the add-custom form
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'outline secondary pico-btn-sm';
+    addBtn.textContent = '+';
+    addBtn.title = 'Add custom button';
+    addBtn.addEventListener('click', () => {
+      const form = document.getElementById('uo-add-form');
+      const isHidden = form.classList.toggle('hidden');
+      if (!isHidden) document.getElementById('uo-add-label').focus();
+    });
+    container.appendChild(addBtn);
   }
 
   function syncButtons(input) {
     const hasId = input.value.trim().length > 0;
-    // Only sync template buttons (skip the trailing Download URLs button)
-    document.querySelectorAll('#uo-buttons button.tmpl-btn').forEach((btn, i) => {
-      btn.disabled = needsId(URL_TEMPLATES[i]) && !hasId;
+    document.querySelectorAll('#uo-buttons .tmpl-btn').forEach(btn => {
+      btn.disabled = btn.dataset.needsId === '1' && !hasId;
     });
   }
+
+  // ── Site Content CSV export ───────────────────────────────────────────────
 
   function downloadSiteContentCsv() {
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -96,6 +161,8 @@
     });
   }
 
+  // ── Init ──────────────────────────────────────────────────────────────────
+
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('st-open-busted').addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -108,15 +175,40 @@
 
     const input = document.getElementById('uo-id-input');
 
-    renderButtons(input);
+    // Load initial state from storage then render
+    chrome.storage.sync.get(['customTemplates', 'showDownloadUrls'], data => {
+      customTemplates  = data.customTemplates || [];
+      showDownloadUrls = data.showDownloadUrls !== false; // default true
+      renderAllButtons(input);
+    });
 
-    // Download URLs button (not a URL template — always enabled)
-    const dlBtn = document.createElement('button');
-    dlBtn.type = 'button';
-    dlBtn.className = 'outline secondary pico-btn-sm';
-    dlBtn.textContent = 'Download URLs';
-    dlBtn.addEventListener('click', downloadSiteContentCsv);
-    document.getElementById('uo-buttons').appendChild(dlBtn);
+    // React to settings changes live
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync') return;
+      if ('showDownloadUrls' in changes) {
+        showDownloadUrls = !!changes.showDownloadUrls.newValue;
+        renderAllButtons(input);
+      }
+    });
+
+    // Add custom button form
+    document.getElementById('uo-add-btn').addEventListener('click', () => {
+      const label = document.getElementById('uo-add-label').value.trim();
+      const url   = document.getElementById('uo-add-url').value.trim();
+      if (!label) { showToast('Enter a label for the button.', 'warning'); return; }
+      if (!url)   { showToast('Enter a URL for the button.', 'warning'); return; }
+      customTemplates.push({ label, url });
+      chrome.storage.sync.set({ customTemplates });
+      document.getElementById('uo-add-label').value = '';
+      document.getElementById('uo-add-url').value   = '';
+      document.getElementById('uo-add-form').classList.add('hidden');
+      renderAllButtons(input);
+      showToast(`"${label}" button added.`, 'success');
+    });
+
+    document.getElementById('uo-add-cancel').addEventListener('click', () => {
+      document.getElementById('uo-add-form').classList.add('hidden');
+    });
 
     input.addEventListener('input', () => syncButtons(input));
 
