@@ -64,4 +64,25 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.set({ renamePdfDownloads: renamePdfToggle.checked });
   });
 
+  const muteToastToggle = document.getElementById('st-mute-toast');
+  chrome.storage.sync.get('muteToast', ({ muteToast }) => {
+    muteToastToggle.checked = !!muteToast;
+  });
+  muteToastToggle.addEventListener('change', () => {
+    chrome.storage.sync.set({ muteToast: muteToastToggle.checked });
+  });
+
+  const altHasColorInput = document.getElementById('st-alt-has-color');
+  const altNoColorInput  = document.getElementById('st-alt-no-color');
+  chrome.storage.sync.get(['altHasColor', 'altNoColor'], ({ altHasColor, altNoColor }) => {
+    if (altHasColor) altHasColorInput.value = altHasColor;
+    if (altNoColor)  altNoColorInput.value  = altNoColor;
+  });
+  altHasColorInput.addEventListener('change', () => {
+    chrome.storage.sync.set({ altHasColor: altHasColorInput.value });
+  });
+  altNoColorInput.addEventListener('change', () => {
+    chrome.storage.sync.set({ altNoColor: altNoColorInput.value });
+  });
+
 });

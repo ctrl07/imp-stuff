@@ -4,7 +4,10 @@ function el(id) {
   return document.getElementById(id);
 }
 
+let _muteToast = false;
+
 function showToast(msg, type = 'info', duration = 3000) {
+  if (_muteToast) return () => {};
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
@@ -48,4 +51,12 @@ function initTabs() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
+  chrome.storage.sync.get('muteToast', ({ muteToast }) => {
+    _muteToast = !!muteToast;
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && 'muteToast' in changes) {
+      _muteToast = !!changes.muteToast.newValue;
+    }
+  });
 });

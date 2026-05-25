@@ -298,9 +298,12 @@ function setAltCheck(enabled) {
       } catch { /* non-http tabs — fall through */ }
     }
 
+    const { altHasColor = '#4caf50', altNoColor = '#f44336' } =
+      await chrome.storage.sync.get(['altHasColor', 'altNoColor']);
+
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: (enable) => {
+      func: (enable, hasColor, noColor) => {
         const STYLE_ID = 'tars-alt-check';
 
         document.querySelectorAll('.tars-alt-hint').forEach(el => el.remove());
@@ -311,11 +314,11 @@ function setAltCheck(enabled) {
         style.id = STYLE_ID;
         style.textContent = `
           img.tars-has-alt {
-            outline: 2px solid #4caf50 !important;
+            outline: 2px solid ${hasColor} !important;
             outline-offset: 2px !important;
           }
           img.tars-no-alt {
-            outline: 2px solid #f44336 !important;
+            outline: 2px solid ${noColor} !important;
             outline-offset: 2px !important;
           }
           .tars-alt-hint {
@@ -336,8 +339,8 @@ function setAltCheck(enabled) {
             z-index: 999999 !important;
             position: relative !important;
           }
-          .tars-alt-hint.has-alt  { color: #4caf50 !important; }
-          .tars-alt-hint.no-alt   { color: #f44336 !important; }
+          .tars-alt-hint.has-alt  { color: ${hasColor} !important; }
+          .tars-alt-hint.no-alt   { color: ${noColor} !important; }
           .tars-alt-hint-text {
             overflow: hidden !important;
             text-overflow: ellipsis !important;
@@ -401,7 +404,7 @@ function setAltCheck(enabled) {
           img.insertAdjacentElement('afterend', hint);
         });
       },
-      args: [enabled],
+      args: [enabled, altHasColor, altNoColor],
     });
   });
 }
