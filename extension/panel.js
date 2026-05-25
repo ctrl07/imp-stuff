@@ -56,13 +56,10 @@ function showToast(msg, type = 'info', duration = 3000) {
 
   function applyBetaFeatures(enabled) {
     const tab = document.getElementById('tab-compare');
-    const themeFieldset = document.getElementById('st-theme-fieldset');
     if (enabled) {
       tab?.classList.remove('hidden');
-      themeFieldset?.classList.remove('hidden');
     } else {
       tab?.classList.add('hidden');
-      themeFieldset?.classList.add('hidden');
       // If currently on a beta tab, fall back to Launch
       if (tab?.classList.contains('active')) {
         tab.classList.remove('active');
