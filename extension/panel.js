@@ -1,5 +1,7 @@
 'use strict';
 
+// ── Globals (used by all panel scripts) ───────────────────────────────────────
+
 function el(id) {
   return document.getElementById(id);
 }
@@ -29,55 +31,59 @@ function showToast(msg, type = 'info', duration = 3000) {
   return dismiss;
 }
 
-function initTabs() {
-  const tabs = document.querySelectorAll('.page-tab[data-page]');
-  const pages = document.querySelectorAll('.page');
+// ── Panel init ────────────────────────────────────────────────────────────────
 
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => {
-        t.classList.remove('active');
-        t.setAttribute('aria-selected', 'false');
+(function initPanel() {
+  function initTabs() {
+    const tabs = document.querySelectorAll('.page-tab[data-page]');
+    const pages = document.querySelectorAll('.page');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        pages.forEach(p => p.classList.add('hidden'));
+
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        const target = document.getElementById('page-' + tab.dataset.page);
+        if (target) target.classList.remove('hidden');
       });
-      pages.forEach(p => p.classList.add('hidden'));
-
-      tab.classList.add('active');
-      tab.setAttribute('aria-selected', 'true');
-      const target = document.getElementById('page-' + tab.dataset.page);
-      if (target) target.classList.remove('hidden');
     });
-  });
-}
+  }
 
-function applyBetaFeatures(enabled) {
-  const tab = document.getElementById('tab-compare');
-  if (!tab) return;
-  if (enabled) {
-    tab.classList.remove('hidden');
-  } else {
-    tab.classList.add('hidden');
-    // If currently on a beta tab, fall back to Launch
-    if (tab.classList.contains('active')) {
-      tab.classList.remove('active');
-      tab.setAttribute('aria-selected', 'false');
-      document.getElementById('page-compare')?.classList.add('hidden');
-      const first = document.querySelector('.page-tab:not(.hidden)');
-      if (first) first.click();
+  function applyBetaFeatures(enabled) {
+    const tab = document.getElementById('tab-compare');
+    if (!tab) return;
+    if (enabled) {
+      tab.classList.remove('hidden');
+    } else {
+      tab.classList.add('hidden');
+      // If currently on a beta tab, fall back to Launch
+      if (tab.classList.contains('active')) {
+        tab.classList.remove('active');
+        tab.setAttribute('aria-selected', 'false');
+        document.getElementById('page-compare')?.classList.add('hidden');
+        const first = document.querySelector('.page-tab:not(.hidden)');
+        if (first) first.click();
+      }
     }
   }
-}
 
-document.addEventListener('DOMContentLoaded', () => {
-  initTabs();
+  document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
 
-  chrome.storage.sync.get(['muteToast', 'betaFeatures'], ({ muteToast, betaFeatures }) => {
-    _muteToast = !!muteToast;
-    applyBetaFeatures(!!betaFeatures);
+    chrome.storage.sync.get(['muteToast', 'betaFeatures'], ({ muteToast, betaFeatures }) => {
+      _muteToast = !!muteToast;
+      applyBetaFeatures(!!betaFeatures);
+    });
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync') return;
+      if ('muteToast' in changes) _muteToast = !!changes.muteToast.newValue;
+      if ('betaFeatures' in changes) applyBetaFeatures(!!changes.betaFeatures.newValue);
+    });
   });
-
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'sync') return;
-    if ('muteToast' in changes) _muteToast = !!changes.muteToast.newValue;
-    if ('betaFeatures' in changes) applyBetaFeatures(!!changes.betaFeatures.newValue);
-  });
-});
+})();
