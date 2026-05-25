@@ -49,6 +49,14 @@
 
     document.getElementById('st-check-btn').addEventListener('click', checkForUpdate);
 
+    const defaultTabSelect = document.getElementById('st-default-tab');
+    chrome.storage.sync.get('defaultTab', ({ defaultTab }) => {
+      if (defaultTab) defaultTabSelect.value = defaultTab;
+    });
+    defaultTabSelect.addEventListener('change', () => {
+      chrome.storage.sync.set({ defaultTab: defaultTabSelect.value });
+    });
+
     const betaAuditToggle   = document.getElementById('st-beta-audit');
     const betaMigrateToggle = document.getElementById('st-beta-migrate');
     chrome.storage.sync.get(['betaAudit', 'betaMigrate'], ({ betaAudit, betaMigrate }) => {

@@ -100,7 +100,7 @@ function showToast(msg, type = 'info', duration = 3000) {
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
 
-    chrome.storage.sync.get(['muteToast', 'betaAudit', 'betaMigrate', 'hideBetaBadge', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaAudit, betaMigrate, hideBetaBadge, accentColor, bgColor, inputColor }) => {
+    chrome.storage.sync.get(['muteToast', 'betaAudit', 'betaMigrate', 'hideBetaBadge', 'defaultTab', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaAudit, betaMigrate, hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
       applyBetaTab('tab-audit',   'page-audit',   !!betaAudit);
       applyBetaTab('tab-compare', 'page-compare', !!betaMigrate);
@@ -108,6 +108,11 @@ function showToast(msg, type = 'info', duration = 3000) {
       applyAccent(accentColor);
       applyBg(bgColor);
       applyInputBg(inputColor);
+      // Apply default tab — only if the tab is visible (not hidden by beta gate)
+      if (defaultTab) {
+        const tabBtn = document.querySelector(`.page-tab[data-page="${defaultTab}"]:not(.hidden)`);
+        if (tabBtn) tabBtn.click();
+      }
     });
 
     chrome.storage.onChanged.addListener((changes, area) => {
