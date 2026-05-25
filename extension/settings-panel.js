@@ -56,4 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.set({ allowCmsOutline: cmsToggle.checked });
   });
 
+  const renamePdfToggle = document.getElementById('st-rename-pdf');
+  chrome.storage.sync.get('renamePdfDownloads', ({ renamePdfDownloads }) => {
+    renamePdfToggle.checked = !!renamePdfDownloads;
+  });
+  renamePdfToggle.addEventListener('change', () => {
+    chrome.storage.sync.set({ renamePdfDownloads: renamePdfToggle.checked });
+  });
+
 });

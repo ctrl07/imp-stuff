@@ -120,6 +120,33 @@ chrome.tabs.onRemoved.addListener(tabId => {
   chrome.storage.session.remove(`tab_${tabId}`);
 });
 
+/* PDF Rename */
+
+function pdfNameFromUrl(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    const slug = (url.hostname + url.pathname)
+      .replace(/\.pdf$/i, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80);
+    return slug + '.pdf';
+  } catch {
+    return 'download.pdf';
+  }
+}
+
+chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
+  const isPdf = item.mime === 'application/pdf' ||
+                item.filename.toLowerCase().endsWith('.pdf');
+  if (!isPdf) { suggest(); return; }
+
+  chrome.storage.sync.get('renamePdfDownloads', ({ renamePdfDownloads }) => {
+    if (!renamePdfDownloads) { suggest(); return; }
+    suggest({ filename: pdfNameFromUrl(item.finalUrl || item.url) });
+  });
+  return true; // async suggest
+});
 
 /* Message Handling */
 

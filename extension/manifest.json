@@ -12,7 +12,8 @@
     "sidePanel",
     "commands",
     "scripting",
-    "windows"
+    "windows",
+    "downloads"
   ],
 
   "host_permissions": ["<all_urls>"],
