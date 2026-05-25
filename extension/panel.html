@@ -11,6 +11,7 @@
   <script src="url-opener-panel.js" defer></script>
   <script src="tools-panel.js" defer></script>
   <script src="compare-panel.js" defer></script>
+  <script src="audit-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
     :root {
@@ -475,6 +476,7 @@
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
       <button class="page-tab hidden" id="tab-compare" data-page="compare" role="tab" aria-selected="false" aria-controls="page-compare">Migrate <span class="beta-badge">BETA</span></button>
+      <button class="page-tab" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit</button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -560,6 +562,38 @@
         <small id="cp-status"></small>
       </fieldset>
       <div id="cp-list"></div>
+    </div>
+
+    <div id="page-audit" class="page hidden">
+
+      <div id="au-setup">
+        <fieldset>
+          <legend>URLs</legend>
+          <textarea id="au-url-input" class="tool-textarea"
+            placeholder="Paste one URL per line…" spellcheck="false"></textarea>
+        </fieldset>
+        <div class="ops-row">
+          <button type="button" class="outline secondary pico-btn-sm" id="au-start-btn">Start Audit</button>
+        </div>
+      </div>
+
+      <div id="au-audit" class="hidden">
+        <div style="font-size:var(--small-font-size);color:var(--pico-muted-color);margin-bottom:0.3rem">
+          <span id="au-progress"></span>
+        </div>
+        <div id="au-current-url" style="font-size:0.78rem;word-break:break-all;margin-bottom:0.75rem;color:var(--pico-color)"></div>
+        <div id="au-fields"></div>
+        <div class="ops-row" style="margin-top:0.75rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="au-save-btn">Save &amp; Next</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="au-skip-btn">Skip</button>
+        </div>
+        <div class="ops-row" style="align-items:center;gap:0.6rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="au-download-btn" disabled>Download CSV</button>
+          <small id="au-saved-count" style="color:var(--pico-muted-color)"></small>
+        </div>
+        <small id="au-status" style="color:var(--pico-muted-color);display:block;min-height:1.2em;margin-top:0.3rem"></small>
+      </div>
+
     </div>
 
     <div id="page-settings" class="page hidden">
