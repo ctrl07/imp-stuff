@@ -96,6 +96,15 @@ function downloadSiteContentCsv() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('st-open-busted').addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+      if (!tab || !tab.url || !tab.url.startsWith('http')) return;
+      const url = new URL(tab.url);
+      url.searchParams.set('_cb', Math.random().toString(36).slice(2, 8));
+      chrome.tabs.create({ url: url.toString(), active: true });
+    });
+  });
+
   const input = document.getElementById('uo-id-input');
 
   renderButtons(input);

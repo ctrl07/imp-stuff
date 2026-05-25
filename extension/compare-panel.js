@@ -86,16 +86,16 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const pairs = parseCsvPairs(reader.result);
         if (!pairs.length) {
-          setStatus('cp-status', 'No valid URL pairs found.');
+          showToast('No valid URL pairs found — check your CSV has live and staging columns.', 'warning');
           return;
         }
         renderPairs(pairs);
-        setStatus('cp-status', `${pairs.length} pair${pairs.length !== 1 ? 's' : ''} loaded.`);
+        setStatus('cp-status', `${pairs.length} pair${pairs.length !== 1 ? 's' : ''}start compare`);
       } catch (err) {
-        setStatus('cp-status', 'Error: ' + err.message);
+        showToast('Something went wrong: ' + err.message, 'error');
       }
     };
-    reader.onerror = () => setStatus('cp-status', 'Could not read file.');
+    reader.onerror = () => showToast('Couldn\'t open the file, please try again.', 'error');
     reader.readAsText(file);
   });
 });

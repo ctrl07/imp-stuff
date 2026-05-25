@@ -13,7 +13,7 @@ async function checkForUpdate() {
   const btn = document.getElementById('st-check-btn');
   const dlRow = document.getElementById('st-download-row');
   btn.disabled = true;
-  setStatus('st-update-status', 'Checking…');
+  setStatus('st-update-status', 'Checking for updates…');
   dlRow.classList.add('hidden');
 
   try {
@@ -24,17 +24,19 @@ async function checkForUpdate() {
     if (!res.ok) throw new Error(`GitHub API ${res.status}`);
     const data = await res.json();
     const latestSha = data.sha.slice(0, 7);
+    setStatus('st-update-status', '');
 
     if (latestSha === INSTALLED_SHA) {
-      setStatus('st-update-status', `Up to date (${INSTALLED_SHA}).`);
+      showToast(`You're all set — this is the latest version (${INSTALLED_SHA}).`, 'success');
     } else {
-      setStatus('st-update-status', `Update available: ${latestSha} (installed: ${INSTALLED_SHA}).`);
       document.getElementById('st-download-link').href =
         `https://github.com/${REPO}/archive/refs/heads/${BRANCH}.zip`;
       dlRow.classList.remove('hidden');
+      showToast(`A new version is available (${latestSha}). You're on ${INSTALLED_SHA}.`, 'warning', 0);
     }
   } catch (err) {
-    setStatus('st-update-status', 'Check failed: ' + err.message);
+    setStatus('st-update-status', '');
+    showToast('Couldn\'t connect please check your connection and try again.', 'error');
   } finally {
     btn.disabled = false;
   }
@@ -45,4 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
     `1.0.0 · ${INSTALLED_SHA}`;
 
   document.getElementById('st-check-btn').addEventListener('click', checkForUpdate);
+
+  const cmsToggle = document.getElementById('st-cms-outline');
+  chrome.storage.sync.get('allowCmsOutline', ({ allowCmsOutline }) => {
+    cmsToggle.checked = !!allowCmsOutline;
+  });
+  cmsToggle.addEventListener('change', () => {
+    chrome.storage.sync.set({ allowCmsOutline: cmsToggle.checked });
+  });
+
 });

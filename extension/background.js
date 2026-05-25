@@ -120,6 +120,7 @@ chrome.tabs.onRemoved.addListener(tabId => {
   chrome.storage.session.remove(`tab_${tabId}`);
 });
 
+
 /* Message Handling */
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
