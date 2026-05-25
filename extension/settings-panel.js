@@ -87,6 +87,7 @@
       outlineColor: '#f5a623',
       altHasColor:  '#4caf50',
       altNoColor:   '#f44336',
+      inputColor:   '#1c2433',
     };
 
     const bgColorInput      = document.getElementById('st-bg-color');
@@ -94,13 +95,15 @@
     const outlineColorInput = document.getElementById('st-outline-color');
     const altHasColorInput  = document.getElementById('st-alt-has-color');
     const altNoColorInput   = document.getElementById('st-alt-no-color');
+    const inputColorInput   = document.getElementById('st-input-color');
 
-    chrome.storage.sync.get(Object.keys(THEME_DEFAULTS), ({ bgColor, accentColor, outlineColor, altHasColor, altNoColor }) => {
+    chrome.storage.sync.get(Object.keys(THEME_DEFAULTS), ({ bgColor, accentColor, outlineColor, altHasColor, altNoColor, inputColor }) => {
       if (bgColor)      bgColorInput.value      = bgColor;
       if (accentColor)  accentColorInput.value  = accentColor;
       if (outlineColor) outlineColorInput.value = outlineColor;
       if (altHasColor)  altHasColorInput.value  = altHasColor;
       if (altNoColor)   altNoColorInput.value   = altNoColor;
+      if (inputColor)   inputColorInput.value   = inputColor;
     });
     bgColorInput.addEventListener('change', () => {
       chrome.storage.sync.set({ bgColor: bgColorInput.value });
@@ -117,6 +120,9 @@
     altNoColorInput.addEventListener('change', () => {
       chrome.storage.sync.set({ altNoColor: altNoColorInput.value });
     });
+    inputColorInput.addEventListener('change', () => {
+      chrome.storage.sync.set({ inputColor: inputColorInput.value });
+    });
 
     document.getElementById('st-reset-theme').addEventListener('click', () => {
       chrome.storage.sync.remove(Object.keys(THEME_DEFAULTS), () => {
@@ -126,12 +132,14 @@
         outlineColorInput.value = THEME_DEFAULTS.outlineColor;
         altHasColorInput.value  = THEME_DEFAULTS.altHasColor;
         altNoColorInput.value   = THEME_DEFAULTS.altNoColor;
+        inputColorInput.value   = THEME_DEFAULTS.inputColor;
 
         // Remove CSS overrides so Pico defaults take over
         const root = document.documentElement;
-        ['--tars-accent', '--tars-bg',
+        ['--tars-accent', '--tars-bg', '--tars-input-bg',
          '--pico-primary', '--pico-secondary',
          '--pico-background-color', '--pico-card-background-color',
+         '--pico-form-element-active-border-color',
         ].forEach(prop => root.style.removeProperty(prop));
 
         showToast('Theme reset to defaults.', 'success');

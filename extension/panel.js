@@ -80,6 +80,7 @@ function showToast(msg, type = 'info', duration = 3000) {
       root.style.setProperty('--tars-accent', color);
       root.style.setProperty('--pico-primary', color);
       root.style.setProperty('--pico-secondary', color);
+      root.style.setProperty('--pico-form-element-active-border-color', color);
     }
   }
 
@@ -92,14 +93,19 @@ function showToast(msg, type = 'info', duration = 3000) {
     }
   }
 
+  function applyInputBg(color) {
+    if (color) document.documentElement.style.setProperty('--tars-input-bg', color);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
 
-    chrome.storage.sync.get(['muteToast', 'betaFeatures', 'accentColor', 'bgColor'], ({ muteToast, betaFeatures, accentColor, bgColor }) => {
+    chrome.storage.sync.get(['muteToast', 'betaFeatures', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaFeatures, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
       applyBetaFeatures(!!betaFeatures);
       applyAccent(accentColor);
       applyBg(bgColor);
+      applyInputBg(inputColor);
     });
 
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -108,6 +114,7 @@ function showToast(msg, type = 'info', duration = 3000) {
       if ('betaFeatures' in changes) applyBetaFeatures(!!changes.betaFeatures.newValue);
       if ('accentColor' in changes) applyAccent(changes.accentColor.newValue);
       if ('bgColor' in changes) applyBg(changes.bgColor.newValue);
+      if ('inputColor' in changes) applyInputBg(changes.inputColor.newValue);
     });
   });
 })();
