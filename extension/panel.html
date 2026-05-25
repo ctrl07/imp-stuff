@@ -82,6 +82,21 @@
       color: var(--pico-color);
     }
 
+    .beta-badge {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: #2e261a;
+      color: #ff9800;
+      border: 1px solid #ff9800;
+      border-radius: 3px;
+      padding: 0 3px;
+      vertical-align: middle;
+      line-height: 1.5;
+      margin-left: 2px;
+    }
+
     /* Inspector */
 
     .inspector-bar {
@@ -440,7 +455,7 @@
     <nav class="page-tabs" role="tablist">
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
-      <button class="page-tab" data-page="compare" role="tab" aria-selected="false" aria-controls="page-compare">Migrate [WIP]</button>
+      <button class="page-tab hidden" id="tab-compare" data-page="compare" role="tab" aria-selected="false" aria-controls="page-compare">Migrate <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -534,6 +549,12 @@
         <div class="settings-row">
           <span>Version</span>
           <code id="st-version"></code>
+        </div>
+        <div class="settings-row">
+          <label class="toggle-label" style="justify-content:space-between;width:100%">
+            <span>Enable beta features <span class="beta-badge">BETA</span></span>
+            <input type="checkbox" id="st-beta-features" role="switch" style="margin:0">
+          </label>
         </div>
         <div class="settings-row">
           <label class="toggle-label" style="justify-content:space-between;width:100%">

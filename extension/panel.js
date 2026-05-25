@@ -49,14 +49,35 @@ function initTabs() {
   });
 }
 
+function applyBetaFeatures(enabled) {
+  const tab = document.getElementById('tab-compare');
+  if (!tab) return;
+  if (enabled) {
+    tab.classList.remove('hidden');
+  } else {
+    tab.classList.add('hidden');
+    // If currently on a beta tab, fall back to Launch
+    if (tab.classList.contains('active')) {
+      tab.classList.remove('active');
+      tab.setAttribute('aria-selected', 'false');
+      document.getElementById('page-compare')?.classList.add('hidden');
+      const first = document.querySelector('.page-tab:not(.hidden)');
+      if (first) first.click();
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
-  chrome.storage.sync.get('muteToast', ({ muteToast }) => {
+
+  chrome.storage.sync.get(['muteToast', 'betaFeatures'], ({ muteToast, betaFeatures }) => {
     _muteToast = !!muteToast;
+    applyBetaFeatures(!!betaFeatures);
   });
+
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && 'muteToast' in changes) {
-      _muteToast = !!changes.muteToast.newValue;
-    }
+    if (area !== 'sync') return;
+    if ('muteToast' in changes) _muteToast = !!changes.muteToast.newValue;
+    if ('betaFeatures' in changes) applyBetaFeatures(!!changes.betaFeatures.newValue);
   });
 });

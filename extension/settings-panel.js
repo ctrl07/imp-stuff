@@ -48,6 +48,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('st-check-btn').addEventListener('click', checkForUpdate);
 
+  const betaToggle = document.getElementById('st-beta-features');
+  chrome.storage.sync.get('betaFeatures', ({ betaFeatures }) => {
+    betaToggle.checked = !!betaFeatures;
+  });
+  betaToggle.addEventListener('change', () => {
+    chrome.storage.sync.set({ betaFeatures: betaToggle.checked });
+  });
+
   const cmsToggle = document.getElementById('st-cms-outline');
   chrome.storage.sync.get('allowCmsOutline', ({ allowCmsOutline }) => {
     cmsToggle.checked = !!allowCmsOutline;
