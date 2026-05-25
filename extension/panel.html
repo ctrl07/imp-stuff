@@ -87,6 +87,10 @@
       color: var(--pico-color);
     }
 
+    .hide-beta-badges .beta-badge {
+      display: none !important;
+    }
+
     .beta-badge {
       display: inline-block;
       font-size: 0.6rem;
@@ -476,7 +480,7 @@
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
       <button class="page-tab hidden" id="tab-compare" data-page="compare" role="tab" aria-selected="false" aria-controls="page-compare">Migrate <span class="beta-badge">BETA</span></button>
-      <button class="page-tab" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit</button>
+      <button class="page-tab hidden" id="tab-audit" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -603,10 +607,27 @@
           <span>Version</span>
           <code id="st-version"></code>
         </div>
+        <details style="margin-bottom:0.25rem">
+          <summary style="font-size:var(--small-font-size);cursor:pointer;user-select:none;padding:0.25rem 0">
+            Beta features <span class="beta-badge">BETA</span>
+          </summary>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Audit tab</span>
+              <input type="checkbox" id="st-beta-audit" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Migrate tab</span>
+              <input type="checkbox" id="st-beta-migrate" role="switch" style="margin:0">
+            </label>
+          </div>
+        </details>
         <div class="settings-row">
           <label class="toggle-label" style="justify-content:space-between;width:100%">
-            <span>Enable beta features <span class="beta-badge">BETA</span></span>
-            <input type="checkbox" id="st-beta-features" role="switch" style="margin:0">
+            <span>Hide beta labels</span>
+            <input type="checkbox" id="st-hide-beta-badge" role="switch" style="margin:0">
           </label>
         </div>
         <div class="settings-row">

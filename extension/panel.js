@@ -54,17 +54,16 @@ function showToast(msg, type = 'info', duration = 3000) {
     });
   }
 
-  function applyBetaFeatures(enabled) {
-    const tab = document.getElementById('tab-compare');
+  function applyBetaTab(tabId, pageId, enabled) {
+    const tab = document.getElementById(tabId);
     if (enabled) {
       tab?.classList.remove('hidden');
     } else {
       tab?.classList.add('hidden');
-      // If currently on a beta tab, fall back to Launch
       if (tab?.classList.contains('active')) {
         tab.classList.remove('active');
         tab.setAttribute('aria-selected', 'false');
-        document.getElementById('page-compare')?.classList.add('hidden');
+        document.getElementById(pageId)?.classList.add('hidden');
         const first = document.querySelector('.page-tab:not(.hidden)');
         if (first) first.click();
       }
@@ -94,12 +93,18 @@ function showToast(msg, type = 'info', duration = 3000) {
     if (color) document.documentElement.style.setProperty('--tars-input-bg', color);
   }
 
+  function applyHideBetaBadges(hide) {
+    document.body.classList.toggle('hide-beta-badges', !!hide);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
 
-    chrome.storage.sync.get(['muteToast', 'betaFeatures', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaFeatures, accentColor, bgColor, inputColor }) => {
+    chrome.storage.sync.get(['muteToast', 'betaAudit', 'betaMigrate', 'hideBetaBadge', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaAudit, betaMigrate, hideBetaBadge, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
-      applyBetaFeatures(!!betaFeatures);
+      applyBetaTab('tab-audit',   'page-audit',   !!betaAudit);
+      applyBetaTab('tab-compare', 'page-compare', !!betaMigrate);
+      applyHideBetaBadges(!!hideBetaBadge);
       applyAccent(accentColor);
       applyBg(bgColor);
       applyInputBg(inputColor);
@@ -107,11 +112,13 @@ function showToast(msg, type = 'info', duration = 3000) {
 
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'sync') return;
-      if ('muteToast' in changes) _muteToast = !!changes.muteToast.newValue;
-      if ('betaFeatures' in changes) applyBetaFeatures(!!changes.betaFeatures.newValue);
-      if ('accentColor' in changes) applyAccent(changes.accentColor.newValue);
-      if ('bgColor' in changes) applyBg(changes.bgColor.newValue);
-      if ('inputColor' in changes) applyInputBg(changes.inputColor.newValue);
+      if ('muteToast'    in changes) _muteToast = !!changes.muteToast.newValue;
+      if ('betaAudit'    in changes) applyBetaTab('tab-audit',   'page-audit',   !!changes.betaAudit.newValue);
+      if ('betaMigrate'  in changes) applyBetaTab('tab-compare', 'page-compare', !!changes.betaMigrate.newValue);
+      if ('hideBetaBadge' in changes) applyHideBetaBadges(!!changes.hideBetaBadge.newValue);
+      if ('accentColor'  in changes) applyAccent(changes.accentColor.newValue);
+      if ('bgColor'      in changes) applyBg(changes.bgColor.newValue);
+      if ('inputColor'   in changes) applyInputBg(changes.inputColor.newValue);
     });
   });
 })();

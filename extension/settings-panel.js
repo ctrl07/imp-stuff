@@ -49,12 +49,25 @@
 
     document.getElementById('st-check-btn').addEventListener('click', checkForUpdate);
 
-    const betaToggle = document.getElementById('st-beta-features');
-    chrome.storage.sync.get('betaFeatures', ({ betaFeatures }) => {
-      betaToggle.checked = !!betaFeatures;
+    const betaAuditToggle   = document.getElementById('st-beta-audit');
+    const betaMigrateToggle = document.getElementById('st-beta-migrate');
+    chrome.storage.sync.get(['betaAudit', 'betaMigrate'], ({ betaAudit, betaMigrate }) => {
+      betaAuditToggle.checked   = !!betaAudit;
+      betaMigrateToggle.checked = !!betaMigrate;
     });
-    betaToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaFeatures: betaToggle.checked });
+    betaAuditToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ betaAudit: betaAuditToggle.checked });
+    });
+    betaMigrateToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ betaMigrate: betaMigrateToggle.checked });
+    });
+
+    const hideBetaBadgeToggle = document.getElementById('st-hide-beta-badge');
+    chrome.storage.sync.get('hideBetaBadge', ({ hideBetaBadge }) => {
+      hideBetaBadgeToggle.checked = !!hideBetaBadge;
+    });
+    hideBetaBadgeToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ hideBetaBadge: hideBetaBadgeToggle.checked });
     });
 
     const cmsToggle = document.getElementById('st-cms-outline');
