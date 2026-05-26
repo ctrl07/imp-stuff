@@ -74,24 +74,41 @@
     });
 
     // Screenshot timing / behavior settings
-    const settleSlider     = document.getElementById('st-sc-settle');
-    const settleVal        = document.getElementById('st-sc-settle-val');
-    const batchDelaySlider = document.getElementById('st-sc-batch-delay');
-    const batchDelayVal    = document.getElementById('st-sc-batch-delay-val');
-    const widthSelect      = document.getElementById('st-sc-width');
-    const maxHeightSelect  = document.getElementById('st-sc-max-height');
-    const scaleSelect      = document.getElementById('st-sc-scale');
+    const settleSlider       = document.getElementById('st-sc-settle');
+    const settleVal          = document.getElementById('st-sc-settle-val');
+    const batchDelaySlider   = document.getElementById('st-sc-batch-delay');
+    const batchDelayVal      = document.getElementById('st-sc-batch-delay-val');
+    const widthSelect        = document.getElementById('st-sc-width');
+    const maxHeightSelect    = document.getElementById('st-sc-max-height');
+    const scaleSelect        = document.getElementById('st-sc-scale');
+    const scrollStepSlider   = document.getElementById('st-sc-scroll-step');
+    const scrollStepVal      = document.getElementById('st-sc-scroll-step-val');
+    const scrollSettleSlider = document.getElementById('st-sc-scroll-settle');
+    const scrollSettleVal    = document.getElementById('st-sc-scroll-settle-val');
+    const imgWaitSlider      = document.getElementById('st-sc-img-wait');
+    const imgWaitVal         = document.getElementById('st-sc-img-wait-val');
 
     chrome.storage.sync.get(
-      { screenshotSettleMs: 2000, screenshotBatchDelayMs: 500, screenshotWidth: 1280, screenshotMaxHeight: 8000, screenshotScale: 1 },
-      ({ screenshotSettleMs, screenshotBatchDelayMs, screenshotWidth, screenshotMaxHeight, screenshotScale }) => {
-        settleSlider.value      = screenshotSettleMs;
-        settleVal.textContent   = screenshotSettleMs + ' ms';
-        batchDelaySlider.value  = screenshotBatchDelayMs;
+      {
+        screenshotSettleMs: 2000, screenshotBatchDelayMs: 500,
+        screenshotWidth: 1280, screenshotMaxHeight: 8000, screenshotScale: 1,
+        screenshotScrollStepMs: 80, screenshotScrollSettleMs: 300, screenshotImgWaitMs: 3000,
+      },
+      ({ screenshotSettleMs, screenshotBatchDelayMs, screenshotWidth, screenshotMaxHeight, screenshotScale,
+         screenshotScrollStepMs, screenshotScrollSettleMs, screenshotImgWaitMs }) => {
+        settleSlider.value        = screenshotSettleMs;
+        settleVal.textContent     = screenshotSettleMs + ' ms';
+        batchDelaySlider.value    = screenshotBatchDelayMs;
         batchDelayVal.textContent = screenshotBatchDelayMs + ' ms';
-        widthSelect.value       = screenshotWidth;
-        maxHeightSelect.value   = screenshotMaxHeight;
-        scaleSelect.value       = screenshotScale;
+        widthSelect.value         = screenshotWidth;
+        maxHeightSelect.value     = screenshotMaxHeight;
+        scaleSelect.value         = screenshotScale;
+        scrollStepSlider.value    = screenshotScrollStepMs;
+        scrollStepVal.textContent = screenshotScrollStepMs + ' ms';
+        scrollSettleSlider.value    = screenshotScrollSettleMs;
+        scrollSettleVal.textContent = screenshotScrollSettleMs + ' ms';
+        imgWaitSlider.value       = screenshotImgWaitMs;
+        imgWaitVal.textContent    = screenshotImgWaitMs + ' ms';
       }
     );
 
@@ -111,6 +128,18 @@
     });
     scaleSelect.addEventListener('change', () => {
       chrome.storage.sync.set({ screenshotScale: Number(scaleSelect.value) });
+    });
+    scrollStepSlider.addEventListener('input', () => {
+      scrollStepVal.textContent = scrollStepSlider.value + ' ms';
+      chrome.storage.sync.set({ screenshotScrollStepMs: Number(scrollStepSlider.value) });
+    });
+    scrollSettleSlider.addEventListener('input', () => {
+      scrollSettleVal.textContent = scrollSettleSlider.value + ' ms';
+      chrome.storage.sync.set({ screenshotScrollSettleMs: Number(scrollSettleSlider.value) });
+    });
+    imgWaitSlider.addEventListener('input', () => {
+      imgWaitVal.textContent = imgWaitSlider.value + ' ms';
+      chrome.storage.sync.set({ screenshotImgWaitMs: Number(imgWaitSlider.value) });
     });
 
     const showDownloadUrlsToggle = document.getElementById('st-show-download-urls');

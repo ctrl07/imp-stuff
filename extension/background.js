@@ -175,11 +175,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         // Load capture settings from storage (defaults match the UI defaults)
         const settings = await new Promise(resolve =>
           chrome.storage.sync.get(
-            { screenshotSettleMs: 2000, screenshotWidth: 1280, screenshotMaxHeight: 8000, screenshotScale: 1 },
+            {
+              screenshotSettleMs: 2000, screenshotWidth: 1280, screenshotMaxHeight: 8000, screenshotScale: 1,
+              screenshotScrollStepMs: 80, screenshotScrollSettleMs: 300, screenshotImgWaitMs: 3000,
+            },
             resolve
           )
         );
-        const { screenshotSettleMs, screenshotWidth, screenshotMaxHeight, screenshotScale } = settings;
+        const { screenshotSettleMs, screenshotWidth, screenshotMaxHeight, screenshotScale,
+                screenshotScrollStepMs, screenshotScrollSettleMs, screenshotImgWaitMs } = settings;
 
         await wbAttach(tabId);
         attached = true;
@@ -215,16 +219,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             const step = window.innerHeight || 900;
             for (let y = 0; y < h; y += step) {
               window.scrollTo(0, y);
-              await new Promise(r => setTimeout(r, 80));
+              await new Promise(r => setTimeout(r, ${screenshotScrollStepMs}));
             }
             window.scrollTo(0, 0);
-            await new Promise(r => setTimeout(r, 300));
+            await new Promise(r => setTimeout(r, ${screenshotScrollSettleMs}));
           })()`,
           awaitPromise: true,
           timeout: 30000,
         });
 
-        // Wait for any still-loading <img> elements (3 s cap)
+        // Wait for any still-loading <img> elements (capped by screenshotImgWaitMs)
         await wbSend(tabId, 'Runtime.evaluate', {
           expression: `Promise.race([
             Promise.all(
@@ -232,10 +236,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
                 .filter(img => !img.complete)
                 .map(img => new Promise(r => { img.onload = img.onerror = r; }))
             ),
-            new Promise(r => setTimeout(r, 3000)),
+            new Promise(r => setTimeout(r, ${screenshotImgWaitMs})),
           ])`,
           awaitPromise: true,
-          timeout: 5000,
+          timeout: screenshotImgWaitMs + 2000,
         });
 
         const { data: screenshotBase64 } = await wbSend(tabId, 'Page.captureScreenshot', {

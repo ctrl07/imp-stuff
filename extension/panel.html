@@ -192,7 +192,7 @@
 
     summary span.section-title {
       margin: 0;
-      font-size: 1rem;
+      font-size: 0.90rem;
       display: inline;
       font-weight: 600;
     }
@@ -763,21 +763,21 @@
         <details>
           <summary><span class="section-title">Capture settings</span></summary>
           <div class="slider-row" style="margin-top:0.5rem">
-            <label style="font-size:var(--small-font-size)">Settle delay</label>
+            <label style="font-size:var(--small-font-size)" title="Wait this long after the page finishes loading before taking the screenshot. Increase for pages with animations or late-rendering content.">Settle delay</label>
             <div class="slider-group">
               <input type="range" id="st-sc-settle" min="0" max="10000" step="100" value="2000" style="flex:1">
               <span id="st-sc-settle-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">2000 ms</span>
             </div>
           </div>
           <div class="slider-row">
-            <label style="font-size:var(--small-font-size)">Batch delay</label>
+            <label style="font-size:var(--small-font-size)" title="Wait this long between each URL when running a batch capture. Helps avoid rate-limiting or overloading slow sites.">Batch delay</label>
             <div class="slider-group">
               <input type="range" id="st-sc-batch-delay" min="0" max="3000" step="100" value="500" style="flex:1">
               <span id="st-sc-batch-delay-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">500 ms</span>
             </div>
           </div>
           <div class="settings-row">
-            <span style="font-size:var(--small-font-size)">Viewport width</span>
+            <span style="font-size:var(--small-font-size)" title="Browser viewport width used during capture. Affects which responsive layout breakpoint the page renders at.">Viewport width</span>
             <select id="st-sc-width" style="width:auto;font-size:var(--small-font-size);padding:0.2rem 0.4rem">
               <option value="1280">1280 px</option>
               <option value="1440">1440 px</option>
@@ -785,7 +785,7 @@
             </select>
           </div>
           <div class="settings-row">
-            <span style="font-size:var(--small-font-size)">Max page height</span>
+            <span style="font-size:var(--small-font-size)" title="Caps the full-page screenshot height. Prevents runaway file sizes on infinite-scroll or very long pages.">Max page height</span>
             <select id="st-sc-max-height" style="width:auto;font-size:var(--small-font-size);padding:0.2rem 0.4rem">
               <option value="4000">4000 px</option>
               <option value="8000" selected>8000 px</option>
@@ -794,11 +794,32 @@
             </select>
           </div>
           <div class="settings-row">
-            <span style="font-size:var(--small-font-size)">Pixel density</span>
+            <span style="font-size:var(--small-font-size)" title="Device pixel ratio. 2× retina produces sharper images but roughly doubles file size.">Pixel density</span>
             <select id="st-sc-scale" style="width:auto;font-size:var(--small-font-size);padding:0.2rem 0.4rem">
               <option value="1" selected>1× standard</option>
               <option value="2">2× retina</option>
             </select>
+          </div>
+          <div class="slider-row">
+            <label style="font-size:var(--small-font-size)" title="Pause between each viewport-height scroll step during the lazy-image sweep. Increase if images below the fold still appear blank.">Scroll step delay</label>
+            <div class="slider-group">
+              <input type="range" id="st-sc-scroll-step" min="0" max="300" step="10" value="80" style="flex:1">
+              <span id="st-sc-scroll-step-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">80 ms</span>
+            </div>
+          </div>
+          <div class="slider-row">
+            <label style="font-size:var(--small-font-size)" title="Pause after scrolling back to the top before the screenshot fires. Allows the page layout to settle after the sweep.">Scroll settle</label>
+            <div class="slider-group">
+              <input type="range" id="st-sc-scroll-settle" min="0" max="1000" step="50" value="300" style="flex:1">
+              <span id="st-sc-scroll-settle-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">300 ms</span>
+            </div>
+          </div>
+          <div class="slider-row">
+            <label style="font-size:var(--small-font-size)" title="Maximum time to wait for still-loading images after the scroll sweep. Set to 0 to skip the image wait entirely.">Image wait cap</label>
+            <div class="slider-group">
+              <input type="range" id="st-sc-img-wait" min="0" max="5000" step="250" value="3000" style="flex:1">
+              <span id="st-sc-img-wait-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">3000 ms</span>
+            </div>
           </div>
         </details>
       </fieldset>
