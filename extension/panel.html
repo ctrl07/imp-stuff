@@ -740,16 +740,22 @@
         </div>
         <div class="settings-row">
           <label class="toggle-label" style="justify-content:space-between;width:100%">
-            <span>Rename PDF downloads</span>
-            <input type="checkbox" id="st-rename-pdf" role="switch" style="margin:0">
-          </label>
-        </div>
-        <div class="settings-row">
-          <label class="toggle-label" style="justify-content:space-between;width:100%">
             <span>Disable notifications</span>
             <input type="checkbox" id="st-mute-toast" role="switch" style="margin:0">
           </label>
         </div>
+        <div class="settings-row">
+          <label class="toggle-label" style="justify-content:space-between;width:100%">
+            <span title="Auto-remove large fixed overlays on every page — chat widgets, cookie banners, consent modals. Elements with z-index ≥ 100 covering ≥60% of viewport. Nav bar is unaffected.">Hide chat widgets</span>
+            <input type="checkbox" id="st-hide-overlays" role="switch" style="margin:0">
+          </label>
+        </div>
+        <details style="margin-top:0.3rem">
+          <summary style="font-size:var(--small-font-size);cursor:pointer;opacity:0.8;user-select:none">Hide selectors</summary>
+          <div style="margin-top:0.35rem">
+            <textarea id="st-hide-selectors" class="tool-textarea" rows="6" placeholder="#chat-widget&#10;.cookie-banner&#10;[data-widget=&quot;chat&quot;]" style="font-size:0.72rem;resize:vertical;min-height:4rem"></textarea>
+          </div>
+        </details>
         <div class="ops-row" style="margin-top:0.6rem">
           <button type="button" class="outline secondary pico-btn-sm" id="st-check-btn">Check for updates</button>
         </div>

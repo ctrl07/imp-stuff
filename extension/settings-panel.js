@@ -167,20 +167,64 @@
       chrome.storage.sync.set({ allowCmsOutline: cmsToggle.checked });
     });
 
-    const renamePdfToggle = document.getElementById('st-rename-pdf');
-    chrome.storage.sync.get('renamePdfDownloads', ({ renamePdfDownloads }) => {
-      renamePdfToggle.checked = !!renamePdfDownloads;
-    });
-    renamePdfToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ renamePdfDownloads: renamePdfToggle.checked });
-    });
-
     const muteToastToggle = document.getElementById('st-mute-toast');
     chrome.storage.sync.get('muteToast', ({ muteToast }) => {
       muteToastToggle.checked = !!muteToast;
     });
     muteToastToggle.addEventListener('change', () => {
       chrome.storage.sync.set({ muteToast: muteToastToggle.checked });
+    });
+
+    const hideOverlaysToggle = document.getElementById('st-hide-overlays');
+    chrome.storage.sync.get({ hideOverlays: false }, ({ hideOverlays }) => {
+      hideOverlaysToggle.checked = !!hideOverlays;
+    });
+    hideOverlaysToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ hideOverlays: hideOverlaysToggle.checked });
+    });
+
+    const DEFAULT_HIDE_SELECTORS = [
+      '// CarNow',
+      '#cn_chat_container',
+      '#cnpoke',
+      '// Podium',
+      '#podium-website-widget',
+      'iframe#podium-prompt',
+      '// BoldChat / LivePerson',
+      '#bc-chat-container',
+      '.bcFloat',
+      '.lp_minimized',
+      '.lp_maximized',
+      '// SnapABug',
+      '#SnapABug_bImg',
+      '#SnapABug_Button',
+      '// Intercom',
+      '#intercom-container',
+      '.intercom-lightweight-app',
+      '// Drift',
+      '#drift-widget',
+      '#drift-frame-container',
+      '// Matador',
+      '[class*="matador-livechat"]',
+      '// Termly cookie button',
+      '.termly-floating-preferences',
+    ].join('\n');
+
+    const hideSelectorsArea = document.getElementById('st-hide-selectors');
+    chrome.storage.sync.get({ hideSelectors: null }, ({ hideSelectors }) => {
+      if (hideSelectors === null) {
+        hideSelectorsArea.value = DEFAULT_HIDE_SELECTORS;
+        chrome.storage.sync.set({ hideSelectors: DEFAULT_HIDE_SELECTORS });
+      } else {
+        hideSelectorsArea.value = hideSelectors;
+      }
+    });
+    let hideSelectorsSaveTimer = null;
+    hideSelectorsArea.addEventListener('input', () => {
+      clearTimeout(hideSelectorsSaveTimer);
+      hideSelectorsSaveTimer = setTimeout(() => {
+        chrome.storage.sync.set({ hideSelectors: hideSelectorsArea.value });
+      }, 600);
     });
 
     const THEME_DEFAULTS = {
