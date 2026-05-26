@@ -115,6 +115,31 @@
     el('au-download-btn').disabled = results.length === 0;
   }
 
+  // ── Field input factory (shared by single and dual mode) ────────────────────
+
+  function makeFieldInput(key, label, val) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-bottom:0.5rem';
+    const fieldStyle = 'width:100%;margin:0;padding:0.2rem 0.4rem;font-size:0.8rem;box-sizing:border-box';
+    const labelHtml = `<div style="font-size:0.75rem;color:var(--pico-muted-color);margin-bottom:0.2rem">${label}</div>`;
+
+    if (key === 'description') {
+      wrap.innerHTML = `
+        ${labelHtml}
+        <textarea data-value="${key}" rows="3"
+          style="${fieldStyle};resize:vertical;min-height:52px;font-family:inherit;line-height:1.4"
+          spellcheck="false">${val.replace(/</g, '&lt;')}</textarea>
+      `;
+    } else {
+      wrap.innerHTML = `
+        ${labelHtml}
+        <input type="text" data-value="${key}" value="${val.replace(/"/g, '&quot;')}"
+          style="${fieldStyle}">
+      `;
+    }
+    return wrap;
+  }
+
   // ── Single-mode: render field rows ──────────────────────────────────────────
 
   function renderFields(data) {
@@ -125,82 +150,62 @@
     for (const { key, label } of FIELDS) {
       const val = data[key] || '';
       if (BLOG_FIELDS.has(key) && !val) continue;
-
-      const row = document.createElement('label');
-      row.className = 'toggle-label';
-      row.style.cssText = 'align-items:flex-start;margin-bottom:0.45rem;gap:0.5rem';
-      row.innerHTML = `
-        <input type="checkbox" data-field="${key}" checked style="margin-top:0.25rem;flex-shrink:0">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:0.75rem;color:var(--pico-muted-color);margin-bottom:0.15rem">${label}</div>
-          <input type="text" data-value="${key}"
-            value="${val.replace(/"/g, '&quot;')}"
-            style="width:100%;margin:0;padding:0.2rem 0.4rem;font-size:0.8rem">
-        </div>
-      `;
-      container.appendChild(row);
+      container.appendChild(makeFieldInput(key, label, val));
     }
 
-    // Notes — always shown
     const notesWrap = document.createElement('div');
-    notesWrap.style.cssText = 'margin-top:0.5rem';
+    notesWrap.style.cssText = 'margin-top:0.25rem';
     notesWrap.innerHTML = `
-      <div style="font-size:0.75rem;color:var(--pico-muted-color);margin-bottom:0.25rem">Notes</div>
+      <div style="font-size:0.75rem;color:var(--pico-muted-color);margin-bottom:0.2rem">Notes</div>
       <textarea id="au-notes" class="tool-textarea"
-        style="min-height:58px" placeholder="Optional notes…" spellcheck="false"></textarea>
+        style="min-height:54px" placeholder="Optional notes…" spellcheck="false"></textarea>
     `;
     container.appendChild(notesWrap);
     setStatus('');
   }
 
-  // ── Dual-mode: render two columns of field rows ─────────────────────────────
+  // ── Dual-mode: render two stacked sections ─────────────────────────────────
 
-  function makeFieldColumn(data, suffix) {
-    const col = document.createElement('div');
-    col.style.cssText = 'min-width:0';
+  function makeFieldSection(data, suffix, heading) {
+    const section = document.createElement('div');
 
-    const urlLabel = document.createElement('div');
-    urlLabel.style.cssText = 'font-size:0.72rem;color:var(--pico-muted-color);word-break:break-all;margin-bottom:0.5rem';
-    urlLabel.textContent = data.url;
-    col.appendChild(urlLabel);
+    const head = document.createElement('div');
+    head.style.cssText = 'margin-bottom:0.5rem';
+    head.innerHTML = `
+      <div style="font-size:0.75rem;font-weight:600;color:var(--tars-accent,var(--pico-color));margin-bottom:0.15rem">${heading}</div>
+      <div style="font-size:0.72rem;color:var(--pico-muted-color);word-break:break-all">${data.url}</div>
+    `;
+    section.appendChild(head);
 
     for (const { key, label } of FIELDS) {
       const val = data[key] || '';
       if (BLOG_FIELDS.has(key) && !val) continue;
-
-      const row = document.createElement('label');
-      row.className = 'toggle-label';
-      row.style.cssText = 'align-items:flex-start;margin-bottom:0.4rem;gap:0.4rem';
-      row.innerHTML = `
-        <input type="checkbox" data-field="${key}-${suffix}" checked style="margin-top:0.25rem;flex-shrink:0">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:0.72rem;color:var(--pico-muted-color);margin-bottom:0.1rem">${label}</div>
-          <input type="text" data-value="${key}-${suffix}"
-            value="${val.replace(/"/g, '&quot;')}"
-            style="width:100%;margin:0;padding:0.18rem 0.35rem;font-size:0.78rem">
-        </div>
-      `;
-      col.appendChild(row);
+      // remap data-value key to include suffix for dual mode
+      const inputWrap = makeFieldInput(key, label, val);
+      inputWrap.querySelector('[data-value]').dataset.value = `${key}-${suffix}`;
+      section.appendChild(inputWrap);
     }
 
-    // Notes per column
     const notesWrap = document.createElement('div');
-    notesWrap.style.cssText = 'margin-top:0.4rem';
+    notesWrap.style.cssText = 'margin-top:0.25rem';
     notesWrap.innerHTML = `
-      <div style="font-size:0.72rem;color:var(--pico-muted-color);margin-bottom:0.2rem">Notes</div>
+      <div style="font-size:0.75rem;color:var(--pico-muted-color);margin-bottom:0.2rem">Notes</div>
       <textarea id="au-notes-${suffix}" class="tool-textarea"
-        style="min-height:50px;font-size:0.78rem" placeholder="Optional notes…" spellcheck="false"></textarea>
+        style="min-height:54px" placeholder="Optional notes…" spellcheck="false"></textarea>
     `;
-    col.appendChild(notesWrap);
-    return col;
+    section.appendChild(notesWrap);
+    return section;
   }
 
   function renderFieldsDual(data1, data2) {
     const container = el('au-fields');
-    container.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0.6rem';
+    container.style.cssText = '';
     container.innerHTML = '';
-    container.appendChild(makeFieldColumn(data1, '1'));
-    container.appendChild(makeFieldColumn(data2, '2'));
+    container.appendChild(makeFieldSection(data1, '1', 'Page 1'));
+    const hr = document.createElement('hr');
+    hr.style.cssText = 'margin:0.75rem 0';
+    container.appendChild(hr);
+    container.appendChild(makeFieldSection(data2, '2', 'Page 2'));
     setStatus('');
   }
 
@@ -208,14 +213,11 @@
 
   function collectFields(suffix) {
     const result = {};
-    const container = el('au-fields');
-    container.querySelectorAll('[data-field]').forEach(cb => {
-      const key = cb.dataset.field;
+    el('au-fields').querySelectorAll('[data-value]').forEach(input => {
+      const key = input.dataset.value;
       if (suffix && !key.endsWith('-' + suffix)) return;
-      if (!cb.checked) return;
       const plainKey = suffix ? key.replace(/-[12]$/, '') : key;
-      const input = container.querySelector(`[data-value="${key}"]`);
-      result[plainKey] = input ? input.value : '';
+      result[plainKey] = input.value;
     });
     return result;
   }
