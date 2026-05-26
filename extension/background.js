@@ -169,7 +169,7 @@ const wbSend = (tabId, method, params) => new Promise((res, rej) =>
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "WB_SCREENSHOT_TABID") {
     (async () => {
-      const { tabId, url, includeMeta } = msg;
+      const { tabId, url } = msg;
       let attached = false;
       try {
         // Load capture settings from storage (defaults match the UI defaults)
@@ -208,24 +208,41 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           width: screenshotWidth, height: pageHeight, deviceScaleFactor: screenshotScale, mobile: false,
         });
 
+        // Scroll sweep top→bottom→top to trigger IntersectionObserver / lazy-loaded images
+        await wbSend(tabId, 'Runtime.evaluate', {
+          expression: `(async () => {
+            const h    = document.documentElement.scrollHeight;
+            const step = window.innerHeight || 900;
+            for (let y = 0; y < h; y += step) {
+              window.scrollTo(0, y);
+              await new Promise(r => setTimeout(r, 80));
+            }
+            window.scrollTo(0, 0);
+            await new Promise(r => setTimeout(r, 300));
+          })()`,
+          awaitPromise: true,
+          timeout: 30000,
+        });
+
+        // Wait for any still-loading <img> elements (3 s cap)
+        await wbSend(tabId, 'Runtime.evaluate', {
+          expression: `Promise.race([
+            Promise.all(
+              Array.from(document.images)
+                .filter(img => !img.complete)
+                .map(img => new Promise(r => { img.onload = img.onerror = r; }))
+            ),
+            new Promise(r => setTimeout(r, 3000)),
+          ])`,
+          awaitPromise: true,
+          timeout: 5000,
+        });
+
         const { data: screenshotBase64 } = await wbSend(tabId, 'Page.captureScreenshot', {
           format: 'png', fromSurface: true,
         });
 
-        let metadata = null;
-        if (includeMeta) {
-          const metaResults = await chrome.scripting.executeScript({
-            target: { tabId },
-            func: () => ({
-              title:       document.title,
-              description: document.querySelector('meta[name="description"]')?.content || '',
-              h1:          document.querySelector('h1')?.textContent?.trim() || '',
-            }),
-          });
-          metadata = metaResults?.[0]?.result || null;
-        }
-
-        sendResponse({ ok: true, url, screenshotBase64, metadata });
+        sendResponse({ ok: true, url, screenshotBase64 });
       } catch (err) {
         sendResponse({ ok: false, url, error: String(err) });
       } finally {

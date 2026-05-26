@@ -49,13 +49,13 @@
 
   // Wake up SW then send screenshot message
 
-  async function doScreenshot(tabId, url, includeMeta) {
+  async function doScreenshot(tabId, url) {
     const wakePort = chrome.runtime.connect({ name: 'wb-wakeup' });
     await new Promise(r => setTimeout(r, 100));
 
     const result = await new Promise(resolve => {
       chrome.runtime.sendMessage(
-        { type: 'WB_SCREENSHOT_TABID', tabId, url, includeMeta },
+        { type: 'WB_SCREENSHOT_TABID', tabId, url },
         response => {
           const err = chrome.runtime.lastError;
           resolve(response || { ok: false, url, error: err?.message || 'No response from background' });
@@ -85,20 +85,42 @@
     el('wb-progress').textContent = total > 1 ? `${done} / ${total}` : '';
   }
 
+  function successCount() { return captures.filter(c => c.ok !== false).length; }
+
+  // Returns captures whose row checkbox is checked
+  function selectedPool() {
+    return captures.filter(c => c.ok !== false && c._rowEl?.querySelector('.wb-row-check')?.checked);
+  }
+
+  // Sync the "All" header checkbox state to match individual row checkboxes
+  function syncSelectAll() {
+    const checks  = Array.from(document.querySelectorAll('.wb-row-check'));
+    const allOn   = checks.length > 0 && checks.every(cb => cb.checked);
+    const someOn  = checks.some(cb => cb.checked);
+    const hdr     = el('wb-select-all');
+    hdr.checked       = allOn;
+    hdr.indeterminate = !allOn && someOn;
+  }
+
   function setRunning(on) {
     running = on;
-    el('wb-start-btn').disabled = on;
+    el('wb-start-btn').disabled        = on;
     el('wb-cancel-btn').classList.toggle('hidden', !on);
-    el('wb-download-all-btn').disabled = captures.filter(c => c.ok !== false).length === 0;
+    const hasCaptures = successCount() > 0;
+    el('wb-download-all-btn').disabled = on || !hasCaptures;
+    el('wb-zip-btn').disabled          = on || !hasCaptures;
   }
 
   function addResultRow(capture) {
     captures.push(capture);
-    el('wb-download-all-btn').disabled = captures.filter(c => c.ok !== false).length === 0;
+    const hasCaptures = successCount() > 0;
+    el('wb-download-all-btn').disabled = !hasCaptures;
+    el('wb-zip-btn').disabled          = !hasCaptures;
 
     const list = el('wb-results');
     const row  = document.createElement('div');
-    row.className = 'wb-result-row';
+    row.className  = 'wb-result-row';
+    capture._rowEl = row;
 
     if (capture.ok === false) {
       row.innerHTML = `
@@ -111,6 +133,14 @@
       return;
     }
 
+    // Row checkbox — visible by default, checked by default
+    const cb = document.createElement('input');
+    cb.type      = 'checkbox';
+    cb.checked   = true;
+    cb.className = 'wb-row-check';
+    cb.style.cssText = 'margin:0 0.4rem 0 0;align-self:center;flex-shrink:0';
+    cb.addEventListener('change', syncSelectAll);
+
     const img = document.createElement('img');
     img.className = 'wb-thumb';
     img.src       = 'data:image/png;base64,' + capture.screenshotBase64;
@@ -119,72 +149,71 @@
 
     const info = document.createElement('div');
     info.className = 'wb-result-info';
+    info.innerHTML = `<div class="wb-result-url" title="${capture.url}">${capture.url}</div>`;
 
-    let metaHtml = '';
-    if (capture.metadata) {
-      const { title, description, h1 } = capture.metadata;
-      metaHtml = `
-        <div class="wb-meta">
-          ${title       ? `<div><span class="wb-meta-label">Title</span> ${title}</div>` : ''}
-          ${h1          ? `<div><span class="wb-meta-label">H1</span> ${h1}</div>` : ''}
-          ${description ? `<div><span class="wb-meta-label">Desc</span> ${description}</div>` : ''}
-        </div>
-      `;
-    }
-
-    info.innerHTML = `
-      <div class="wb-result-url" title="${capture.url}">${capture.url}</div>
-      ${metaHtml}
-    `;
-
-    const dlBtn = document.createElement('button');
-    dlBtn.type        = 'button';
-    dlBtn.className   = 'outline secondary pico-btn-sm wb-dl-btn';
-    dlBtn.textContent = 'Download';
-    dlBtn.addEventListener('click', () => downloadCapture(capture));
-
+    row.appendChild(cb);
     row.appendChild(img);
     row.appendChild(info);
-    row.appendChild(dlBtn);
     list.appendChild(row);
+
+    syncSelectAll();
   }
 
   function downloadCapture(capture) {
     Object.assign(document.createElement('a'), {
       href:     'data:image/png;base64,' + capture.screenshotBase64,
-      download: capture.filename,
+      download: urlToFilename(capture.url),
     }).click();
   }
 
-  function downloadAll() {
-    captures.filter(c => c.ok !== false).forEach((c, i) => {
-      setTimeout(() => downloadCapture(c), i * 150);
-    });
+  function downloadSelected() {
+    selectedPool().forEach((c, i) => setTimeout(() => downloadCapture(c), i * 150));
+  }
+
+  async function downloadZip() {
+    const pool = selectedPool();
+    if (!pool.length) return;
+
+    el('wb-zip-btn').disabled = true;
+    setStatus('Building ZIP…');
+
+    const zip = new JSZip(); // eslint-disable-line no-undef
+    for (const c of pool) {
+      zip.file(urlToFilename(c.url), c.screenshotBase64, { base64: true });
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url  = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), { href: url, download: 'screenshots.zip' }).click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+    setStatus('');
+    el('wb-zip-btn').disabled = successCount() === 0;
   }
 
   // Core capture — single (active tab) or batch (URL list in a new window)
 
   async function runCapture() {
-    const raw = el('wb-url-input').value.trim();
+    const raw  = el('wb-url-input').value.trim();
     const urls = raw ? raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [];
-    const includeMeta = el('wb-include-meta').checked;
     const isBatch = urls.length > 0;
 
     setRunning(true);
     cancelled = false;
     el('wb-results').innerHTML = '';
     captures.length = 0;
+    el('wb-select-all').checked       = true;
+    el('wb-select-all').indeterminate = false;
     updateProgress(0, urls.length);
 
     if (!isBatch) {
-      // Single mode: capture active tab
       setStatus('Capturing current tab…');
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id) throw new Error('No active tab found.');
         const url = tab.url || '';
-        const result = await doScreenshot(tab.id, url, includeMeta);
-        addResultRow({ ...result, url, filename: urlToFilename(url) });
+        const result = await doScreenshot(tab.id, url);
+        addResultRow({ ...result, url });
         setStatus(result.ok ? 'Done.' : '');
       } catch (err) {
         setStatus('Error: ' + String(err));
@@ -193,7 +222,7 @@
       return;
     }
 
-    // Batch mode: open a dedicated capture window so captures don't pollute the current window
+    // Batch mode — isolated minimized window
     const batchDelayMs = await loadBatchDelayMs();
 
     let captureWinId = null;
@@ -201,7 +230,7 @@
       const win = await chrome.windows.create({ focused: false, state: 'minimized' });
       captureWinId = win.id;
     } catch {
-      // Fallback: no dedicated window — tabs will open in current window
+      // Fallback: open tabs in current window
     }
 
     for (let i = 0; i < urls.length; i++) {
@@ -222,8 +251,8 @@
         const tab = await chrome.tabs.create(tabOpts);
         tabId = tab.id;
         await wbWaitForTabLoad(tabId);
-        const result = await doScreenshot(tabId, url, includeMeta);
-        addResultRow({ ...result, url, filename: urlToFilename(url) });
+        const result = await doScreenshot(tabId, url);
+        addResultRow({ ...result, url });
       } catch (err) {
         addResultRow({ ok: false, url, error: String(err) });
       } finally {
@@ -231,13 +260,12 @@
       }
     }
 
-    // Clean up the capture window
     if (captureWinId !== null) {
       chrome.windows.remove(captureWinId).catch(() => {});
     }
 
     updateProgress(captures.length, urls.length);
-    const ok = captures.filter(c => c.ok !== false).length;
+    const ok = successCount();
     setStatus(cancelled
       ? `Cancelled. ${ok} screenshot(s) captured.`
       : `Done. ${ok} screenshot(s) captured.`
@@ -256,8 +284,19 @@
     });
 
     el('wb-download-all-btn').addEventListener('click', () => {
-      if (captures.filter(c => c.ok !== false).length === 0) return;
-      downloadAll();
+      if (successCount() === 0) return;
+      downloadSelected();
+    });
+
+    el('wb-zip-btn').addEventListener('click', () => {
+      if (successCount() === 0) return;
+      downloadZip();
+    });
+
+    // "All" header checkbox — check or uncheck every row
+    el('wb-select-all').addEventListener('change', () => {
+      const checked = el('wb-select-all').checked;
+      document.querySelectorAll('.wb-row-check').forEach(cb => { cb.checked = checked; });
     });
   });
 })();
