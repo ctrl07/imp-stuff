@@ -10,7 +10,6 @@
   <script src="panel.js" defer></script>
   <script src="url-opener-panel.js" defer></script>
   <script src="tools-panel.js" defer></script>
-  <script src="compare-panel.js" defer></script>
   <script src="audit-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
@@ -453,25 +452,6 @@
       color: var(--pico-muted-color);
     }
 
-    /* Compare */
-
-    .cp-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      padding: 0.35rem 0;
-      border-bottom: 1px solid var(--pico-card-border-color);
-    }
-
-    .cp-label {
-      font-size: var(--small-font-size);
-      color: var(--pico-muted-color);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      flex: 1;
-    }
   </style>
 </head>
 <body>
@@ -479,8 +459,7 @@
     <nav class="page-tabs" role="tablist">
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
-      <button class="page-tab hidden" id="tab-compare" data-page="compare" role="tab" aria-selected="false" aria-controls="page-compare">Migrate <span class="beta-badge">BETA</span></button>
-      <button class="page-tab hidden" id="tab-audit" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit <span class="beta-badge">BETA</span></button>
+<button class="page-tab hidden" id="tab-audit" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -564,19 +543,7 @@
 
     </div>
 
-    <div id="page-compare" class="page hidden">
-      <fieldset>
-        <legend>URL Map</legend>
-        <input type="file" id="cp-file" accept=".csv" style="display:none">
-        <div class="ops-row">
-          <label for="cp-file" class="outline secondary pico-btn-sm" id="cp-file-label" style="cursor:pointer;margin:0">Choose CSV</label>
-        </div>
-        <small id="cp-status"></small>
-      </fieldset>
-      <div id="cp-list"></div>
-    </div>
-
-    <div id="page-audit" class="page hidden">
+<div id="page-audit" class="page hidden">
 
       <div id="au-setup">
         <fieldset>
@@ -585,7 +552,15 @@
             placeholder="Paste one URL per line…" spellcheck="false"></textarea>
         </fieldset>
         <div class="ops-row">
+          <input type="file" id="au-csv-file" accept=".csv" style="display:none">
+          <label for="au-csv-file" class="outline secondary pico-btn-sm" style="cursor:pointer;margin:0">Load CSV</label>
           <button type="button" class="outline secondary pico-btn-sm" id="au-start-btn">Start Audit</button>
+        </div>
+        <div id="au-simple-compare-row" class="hidden" style="margin-bottom:0.5rem">
+          <label class="toggle-label">
+            <input type="checkbox" id="au-simple-compare" role="switch">
+            <span>Simple comparison only (open tabs, no audit)</span>
+          </label>
         </div>
       </div>
 
@@ -621,7 +596,6 @@
             <option value="url-opener">Launch</option>
             <option value="tools">Tools</option>
             <option value="audit">Audit</option>
-            <option value="compare">Migrate</option>
             <option value="settings">Settings</option>
           </select>
         </div>
@@ -639,12 +613,6 @@
             <label class="toggle-label" style="justify-content:space-between;width:100%">
               <span>Audit tab</span>
               <input type="checkbox" id="st-beta-audit" role="switch" style="margin:0">
-            </label>
-          </div>
-          <div class="settings-row" style="padding-left:0.75rem">
-            <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Migrate tab</span>
-              <input type="checkbox" id="st-beta-migrate" role="switch" style="margin:0">
             </label>
           </div>
         </details>
@@ -682,33 +650,36 @@
       </fieldset>
       <fieldset>
         <legend>Theme</legend>
-        <div class="settings-row">
-          <span>Background color</span>
-          <input type="color" id="st-bg-color" value="#13191f" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
-        </div>
-        <div class="settings-row">
-          <span>Accent color</span>
-          <input type="color" id="st-accent-color" value="#e8e8e8" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
-        </div>
-        <div class="settings-row">
-          <span>Link outline color</span>
-          <input type="color" id="st-outline-color" value="#f5a623" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
-        </div>
-        <div class="settings-row">
-          <span>Alt present color</span>
-          <input type="color" id="st-alt-has-color" value="#4caf50" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
-        </div>
-        <div class="settings-row">
-          <span>Alt missing color</span>
-          <input type="color" id="st-alt-no-color" value="#f44336" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
-        </div>
-        <div class="settings-row">
-          <span>Input / textarea color</span>
-          <input type="color" id="st-input-color" value="#1c2433" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
-        </div>
-        <div class="ops-row" style="margin-top:0.4rem">
-          <button type="button" class="outline secondary pico-btn-sm" id="st-reset-theme">Reset theme</button>
-        </div>
+        <details>
+          <summary style="font-size:var(--small-font-size);cursor:pointer;user-select:none;padding:0.25rem 0">Customize colors</summary>
+          <div class="settings-row">
+            <span>Background color</span>
+            <input type="color" id="st-bg-color" value="#13191f" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+          </div>
+          <div class="settings-row">
+            <span>Accent color</span>
+            <input type="color" id="st-accent-color" value="#e8e8e8" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+          </div>
+          <div class="settings-row">
+            <span>Link outline color</span>
+            <input type="color" id="st-outline-color" value="#f5a623" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+          </div>
+          <div class="settings-row">
+            <span>Alt present color</span>
+            <input type="color" id="st-alt-has-color" value="#4caf50" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+          </div>
+          <div class="settings-row">
+            <span>Alt missing color</span>
+            <input type="color" id="st-alt-no-color" value="#f44336" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+          </div>
+          <div class="settings-row">
+            <span>Input / textarea color</span>
+            <input type="color" id="st-input-color" value="#1c2433" style="width:2.2rem;height:1.6rem;padding:1px;border-radius:4px;cursor:pointer;border:1px solid var(--pico-card-border-color)">
+          </div>
+          <div class="ops-row" style="margin-top:0.4rem">
+            <button type="button" class="outline secondary pico-btn-sm" id="st-reset-theme">Reset theme</button>
+          </div>
+        </details>
       </fieldset>
     </div>
 

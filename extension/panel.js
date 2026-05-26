@@ -100,10 +100,9 @@ function showToast(msg, type = 'info', duration = 3000) {
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
 
-    chrome.storage.sync.get(['muteToast', 'betaAudit', 'betaMigrate', 'hideBetaBadge', 'defaultTab', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaAudit, betaMigrate, hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
+    chrome.storage.sync.get(['muteToast', 'betaAudit', 'hideBetaBadge', 'defaultTab', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaAudit, hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
-      applyBetaTab('tab-audit',   'page-audit',   !!betaAudit);
-      applyBetaTab('tab-compare', 'page-compare', !!betaMigrate);
+      applyBetaTab('tab-audit', 'page-audit', !!betaAudit);
       applyHideBetaBadges(!!hideBetaBadge);
       applyAccent(accentColor);
       applyBg(bgColor);
@@ -118,8 +117,7 @@ function showToast(msg, type = 'info', duration = 3000) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'sync') return;
       if ('muteToast'    in changes) _muteToast = !!changes.muteToast.newValue;
-      if ('betaAudit'    in changes) applyBetaTab('tab-audit',   'page-audit',   !!changes.betaAudit.newValue);
-      if ('betaMigrate'  in changes) applyBetaTab('tab-compare', 'page-compare', !!changes.betaMigrate.newValue);
+      if ('betaAudit'     in changes) applyBetaTab('tab-audit', 'page-audit', !!changes.betaAudit.newValue);
       if ('hideBetaBadge' in changes) applyHideBetaBadges(!!changes.hideBetaBadge.newValue);
       if ('accentColor'  in changes) applyAccent(changes.accentColor.newValue);
       if ('bgColor'      in changes) applyBg(changes.bgColor.newValue);

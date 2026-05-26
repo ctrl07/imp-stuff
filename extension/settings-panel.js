@@ -57,17 +57,12 @@
       chrome.storage.sync.set({ defaultTab: defaultTabSelect.value });
     });
 
-    const betaAuditToggle   = document.getElementById('st-beta-audit');
-    const betaMigrateToggle = document.getElementById('st-beta-migrate');
-    chrome.storage.sync.get(['betaAudit', 'betaMigrate'], ({ betaAudit, betaMigrate }) => {
-      betaAuditToggle.checked   = !!betaAudit;
-      betaMigrateToggle.checked = !!betaMigrate;
+    const betaAuditToggle = document.getElementById('st-beta-audit');
+    chrome.storage.sync.get('betaAudit', ({ betaAudit }) => {
+      betaAuditToggle.checked = !!betaAudit;
     });
     betaAuditToggle.addEventListener('change', () => {
       chrome.storage.sync.set({ betaAudit: betaAuditToggle.checked });
-    });
-    betaMigrateToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaMigrate: betaMigrateToggle.checked });
     });
 
     const showDownloadUrlsToggle = document.getElementById('st-show-download-urls');
