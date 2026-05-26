@@ -12,6 +12,7 @@
   <script src="tools-panel.js" defer></script>
   <script src="audit-panel.js" defer></script>
   <script src="jszip.min.js" defer></script>
+  <script src="jspdf.min.js" defer></script>
   <script src="screenshot-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
@@ -676,6 +677,10 @@
       <div class="ops-row" style="margin-top:0;margin-bottom:0.5rem;gap:0.4rem;align-items:center">
         <button type="button" class="outline secondary pico-btn-sm" id="wb-download-all-btn" disabled>Download</button>
         <button type="button" class="outline secondary pico-btn-sm" id="wb-zip-btn" disabled>ZIP</button>
+        <label class="toggle-label" style="font-size:var(--small-font-size)">
+          <input type="checkbox" id="wb-pdf-toggle" role="switch" style="margin:0">
+          <span style="user-select:none">PDF</span>
+        </label>
         <label class="toggle-label" style="margin-left:auto;font-size:var(--small-font-size)">
           <input type="checkbox" id="wb-select-all" checked>
           <span style="user-select:none">All</span>

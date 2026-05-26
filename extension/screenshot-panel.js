@@ -34,16 +34,16 @@
     });
   }
 
-  function urlToFilename(urlStr) {
+  function urlToFilename(urlStr, ext = 'png') {
     try {
       const u = new URL(urlStr);
       return (u.hostname + u.pathname)
         .replace(/\/+$/, '')
         .replace(/[^a-zA-Z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
-        .slice(0, 100) + '.png';
+        .slice(0, 100) + '.' + ext;
     } catch {
-      return 'screenshot.png';
+      return 'screenshot.' + ext;
     }
   }
 
@@ -76,6 +76,49 @@
       });
     });
   }
+
+  // PDF conversion using jsPDF (same approach as dom-capture)
+
+  async function pngBase64ToPdfDataUrl(pngBase64) {
+    const dataUrl = 'data:image/png;base64,' + pngBase64;
+    const imgBlob = await (await fetch(dataUrl)).blob();
+    const img     = await createImageBitmap(imgBlob);
+    const { width, height } = img;
+
+    // Slice tall images into pages so jsPDF's canvas limit isn't hit.
+    // Target ≤3 pages; minimum slice height is 1 px.
+    const MAX_SLICE = 10_000;
+    const sliceH    = height <= MAX_SLICE
+      ? height
+      : Math.ceil(height / Math.ceil(height / MAX_SLICE));
+
+    const { jsPDF } = jspdf; // eslint-disable-line no-undef
+    const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [width, sliceH] });
+
+    const canvas  = document.createElement('canvas');
+    canvas.width  = width;
+    const ctx     = canvas.getContext('2d');
+
+    let firstPage = true;
+    for (let y = 0; y < height; y += sliceH) {
+      const h = Math.min(sliceH, height - y);
+      canvas.height = h;
+      ctx.clearRect(0, 0, width, h);
+      ctx.drawImage(img, 0, y, width, h, 0, 0, width, h);
+      const sliceDataUrl = canvas.toDataURL('image/png');
+
+      if (firstPage) {
+        firstPage = false;
+      } else {
+        pdf.addPage([width, h]);
+      }
+      pdf.addImage(sliceDataUrl, 'PNG', 0, 0, width, h);
+    }
+
+    return pdf.output('datauristring');
+  }
+
+  function isPdfMode() { return el('wb-pdf-toggle').checked; }
 
   // UI helpers
 
@@ -159,11 +202,19 @@
     syncSelectAll();
   }
 
-  function downloadCapture(capture) {
-    Object.assign(document.createElement('a'), {
-      href:     'data:image/png;base64,' + capture.screenshotBase64,
-      download: urlToFilename(capture.url),
-    }).click();
+  async function downloadCapture(capture) {
+    if (isPdfMode()) {
+      const pdfDataUrl = await pngBase64ToPdfDataUrl(capture.screenshotBase64);
+      Object.assign(document.createElement('a'), {
+        href:     pdfDataUrl,
+        download: urlToFilename(capture.url, 'pdf'),
+      }).click();
+    } else {
+      Object.assign(document.createElement('a'), {
+        href:     'data:image/png;base64,' + capture.screenshotBase64,
+        download: urlToFilename(capture.url, 'png'),
+      }).click();
+    }
   }
 
   function downloadSelected() {
@@ -174,12 +225,19 @@
     const pool = selectedPool();
     if (!pool.length) return;
 
+    const pdf = isPdfMode();
     el('wb-zip-btn').disabled = true;
-    setStatus('Building ZIP…');
+    setStatus(pdf ? 'Building PDF ZIP…' : 'Building ZIP…');
 
     const zip = new JSZip(); // eslint-disable-line no-undef
     for (const c of pool) {
-      zip.file(urlToFilename(c.url), c.screenshotBase64, { base64: true });
+      if (pdf) {
+        const pdfDataUrl = await pngBase64ToPdfDataUrl(c.screenshotBase64);
+        const base64     = pdfDataUrl.split(',')[1];
+        zip.file(urlToFilename(c.url, 'pdf'), base64, { base64: true });
+      } else {
+        zip.file(urlToFilename(c.url, 'png'), c.screenshotBase64, { base64: true });
+      }
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
