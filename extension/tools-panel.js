@@ -1,7 +1,7 @@
 'use strict';
 
 (function initToolsPanel() {
-  // ── Shared ──────────────────────────────────────────────────────────────────
+  // Shared
 
   function downloadBlob(filename, content, type) {
     const blob = new Blob([content], { type });
@@ -18,7 +18,7 @@
     if (el) el.textContent = msg;
   }
 
-  // ── Tool 1: Page Links → urls.txt ───────────────────────────────────────────
+  // Tool 1: Page Links → urls.txt
 
   async function exportPageLinks() {
     setStatus('tp-links-status', 'Gathering links from the page…');
@@ -38,7 +38,7 @@
     }
   }
 
-  // ── Tool 2: Sitemap XML → urls.txt ──────────────────────────────────────────
+  // Tool 2: Sitemap XML → urls.txt
 
   function parseSitemapXml(xmlStr) {
     const doc = new DOMParser().parseFromString(xmlStr, 'application/xml');
@@ -69,7 +69,7 @@
     }
   }
 
-  // ── Tool 3: WordPress XML → posts.csv ───────────────────────────────────────
+  // Tool 3: WordPress XML → posts.csv
 
   function wpText(item, tag) {
     const el = item.getElementsByTagName(tag)[0];
@@ -159,7 +159,7 @@
     reader.readAsText(file);
   }
 
-  // ── Tool 0: Anchor Tag Outliner ─────────────────────────────────────────────
+  // Tool 0: Anchor Tag Outliner
 
   async function setLinkOutline(enabled) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -279,7 +279,7 @@
     });
   }
 
-  // ── Tool 0b: Image Alt Checker ──────────────────────────────────────────────
+  // Tool 0b: Image Alt Checker
 
   function setAltCheck(enabled) {
     chrome.tabs.query({ active: true, currentWindow: true }, async ([tab]) => {
@@ -411,7 +411,7 @@
     });
   }
 
-  // ── Init ────────────────────────────────────────────────────────────────────
+  // Init
 
   document.addEventListener('DOMContentLoaded', () => {
     const outlineCheckbox = document.getElementById('tp-outline-links');

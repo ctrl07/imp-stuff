@@ -1,6 +1,6 @@
 'use strict';
 
-// ── Globals (used by all panel scripts) ───────────────────────────────────────
+// Globals (used by all panel scripts)
 
 function el(id) {
   return document.getElementById(id);
@@ -31,7 +31,7 @@ function showToast(msg, type = 'info', duration = 3000) {
   return dismiss;
 }
 
-// ── Panel init ────────────────────────────────────────────────────────────────
+// Panel init
 
 (function initPanel() {
   function initTabs() {

@@ -1,7 +1,7 @@
 'use strict';
 
 (function initUrlOpenerPanel() {
-  // ─── Edit this array to add, remove, or reorder destinations ────────────────
+  // Edit this array to add, remove, or reorder destinations
   // Use {id} as the placeholder for the dealer ID.
   // Entries without {id} (e.g. BAM) are always openable regardless of input.
   const URL_TEMPLATES = [
@@ -20,7 +20,7 @@
     { label: 'Admin Tools',   url: 'https://clientconfig.dealeron.com/#/{id}/adminTools' },
     { label: 'BAM',           url: 'https://bam.dealeron.com/#/' },
   ];
-  // ─────────────────────────────────────────────────────────────────────────────
+  
 
   let customTemplates  = [];
   let showDownloadUrls = true;
@@ -34,7 +34,7 @@
     return template.url.includes('{id}');
   }
 
-  // ── Button factory ────────────────────────────────────────────────────────
+  // Button factory
 
   function makeTemplateBtn(template, input) {
     const btn = document.createElement('button');
@@ -51,7 +51,7 @@
     return btn;
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // Render
 
   function renderAllButtons(input) {
     const container = document.getElementById('uo-buttons');
@@ -123,7 +123,7 @@
     });
   }
 
-  // ── Site Content CSV export ───────────────────────────────────────────────
+  // Site Content CSV export
 
   function downloadSiteContentCsv() {
     chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
@@ -161,7 +161,7 @@
     });
   }
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  // Init
 
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('st-open-busted').addEventListener('click', () => {

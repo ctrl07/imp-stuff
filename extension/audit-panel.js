@@ -1,7 +1,7 @@
 'use strict';
 
 (function initAuditPanel() {
-  // ── State ───────────────────────────────────────────────────────────────────
+  // State
 
   let mode          = 'single'; // 'single' | 'dual'
   let urls          = [];       // single mode: string[]
@@ -15,7 +15,7 @@
   let dualLoadCount = 0;        // counts how many of the 2 dual tabs have loaded
   let simpleCompare = false;
 
-  // ── Field definitions ───────────────────────────────────────────────────────
+  // Field definitions
 
   const FIELDS = [
     { key: 'title',       label: 'Title' },
@@ -27,7 +27,7 @@
   ];
   const BLOG_FIELDS = new Set(['category', 'tags', 'date']);
 
-  // ── Extraction function (injected into page) ────────────────────────────────
+  // Extraction function (injected into page)
 
   function extractAuditData() {
     function getMeta(name) {
@@ -75,7 +75,7 @@
     };
   }
 
-  // ── CSV parsing ─────────────────────────────────────────────────────────────
+  // CSV parsing
 
   function parseCsvInput(text) {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -104,7 +104,7 @@
     return { isDual, pairs };
   }
 
-  // ── UI helpers ──────────────────────────────────────────────────────────────
+  // UI helpers
 
   function setStatus(msg) {
     el('au-status').textContent = msg;
@@ -115,7 +115,7 @@
     el('au-download-btn').disabled = results.length === 0;
   }
 
-  // ── Field input factory (shared by single and dual mode) ────────────────────
+  // Field input factory (shared by single and dual mode)
 
   function makeFieldInput(key, label, val) {
     const wrap = document.createElement('div');
@@ -140,7 +140,7 @@
     return wrap;
   }
 
-  // ── Single-mode: render field rows ──────────────────────────────────────────
+  // Single-mode: render field rows
 
   function renderFields(data) {
     const container = el('au-fields');
@@ -164,7 +164,7 @@
     setStatus('');
   }
 
-  // ── Dual-mode: render two stacked sections ─────────────────────────────────
+  // Dual-mode: render two stacked sections
 
   function makeFieldSection(data, suffix, heading) {
     const section = document.createElement('div');
@@ -209,7 +209,7 @@
     setStatus('');
   }
 
-  // ── Collect checked field values ────────────────────────────────────────────
+  // Collect checked field values
 
   function collectFields(suffix) {
     const result = {};
@@ -222,7 +222,7 @@
     return result;
   }
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
+  // Navigation
 
   function updateProgress() {
     const total = mode === 'dual' ? urlPairs.length : urls.length;
@@ -274,7 +274,7 @@
     else goToSingle(index);
   }
 
-  // ── Tab load listener ───────────────────────────────────────────────────────
+  // Tab load listener
 
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (!waitingForLoad || changeInfo.status !== 'complete') return;
@@ -295,7 +295,7 @@
     }
   });
 
-  // ── Extraction ──────────────────────────────────────────────────────────────
+  // Extraction
 
   function extractFromTab(tabId, cb) {
     setStatus('Extracting…');
@@ -333,7 +333,7 @@
     );
   }
 
-  // ── Save & Next / Skip ──────────────────────────────────────────────────────
+  // Save & Next / Skip
 
   function saveAndNext() {
     if (mode === 'dual') {
@@ -372,7 +372,7 @@
     goTo(current + 1);
   }
 
-  // ── Done state ──────────────────────────────────────────────────────────────
+  // Done state
 
   function showDone() {
     waitingForLoad = false;
@@ -415,7 +415,7 @@
     el('au-setup').classList.remove('hidden');
   }
 
-  // ── Simple comparison list (open tabs only, no extraction) ──────────────────
+  // Simple comparison list (open tabs only, no extraction)
 
   function renderSimpleCompareList() {
     const container = el('au-fields');
@@ -464,7 +464,7 @@
     container.appendChild(restart);
   }
 
-  // ── CSV builder ─────────────────────────────────────────────────────────────
+  // CSV builder
 
   function csvCell(val) {
     const s = String(val ?? '');
@@ -493,7 +493,7 @@
     URL.revokeObjectURL(a.href);
   }
 
-  // ── Start audit ─────────────────────────────────────────────────────────────
+  // Start audit
 
   function startAudit() {
     const raw = el('au-url-input').value.trim();
@@ -531,7 +531,7 @@
     goTo(0);
   }
 
-  // ── Init ────────────────────────────────────────────────────────────────────
+  // Init
 
   document.addEventListener('DOMContentLoaded', () => {
     el('au-start-btn').addEventListener('click', startAudit);
