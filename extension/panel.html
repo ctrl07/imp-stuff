@@ -11,6 +11,7 @@
   <script src="url-opener-panel.js" defer></script>
   <script src="tools-panel.js" defer></script>
   <script src="audit-panel.js" defer></script>
+  <script src="screenshot-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
     :root {
@@ -452,6 +453,79 @@
       color: var(--pico-muted-color);
     }
 
+    /* Wayback */
+
+    #wb-results {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      margin-top: 0.25rem;
+    }
+
+    .wb-result-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.5rem;
+      background: var(--pico-card-background-color);
+      border: 1px solid var(--pico-card-border-color);
+      border-radius: 0.5rem;
+    }
+
+    .wb-thumb {
+      width: 72px;
+      max-height: 120px;
+      flex-shrink: 0;
+      border-radius: 3px;
+      border: 1px solid var(--pico-card-border-color);
+      object-fit: cover;
+      object-position: top;
+      cursor: pointer;
+    }
+
+    .wb-thumb:hover {
+      opacity: 0.85;
+    }
+
+    .wb-result-info {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .wb-result-url {
+      font-size: 0.72rem;
+      color: var(--pico-muted-color);
+      word-break: break-all;
+      margin-bottom: 0.25rem;
+    }
+
+    .wb-meta {
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: var(--pico-color);
+    }
+
+    .wb-meta > div {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .wb-meta-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--pico-muted-color);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-right: 0.3rem;
+    }
+
+    .wb-dl-btn {
+      flex-shrink: 0;
+      align-self: flex-end;
+    }
+
   </style>
 </head>
 <body>
@@ -460,6 +534,7 @@
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
 <button class="page-tab hidden" id="tab-audit" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit <span class="beta-badge">BETA</span></button>
+      <button class="page-tab hidden" id="tab-screenshot" data-page="screenshot" role="tab" aria-selected="false" aria-controls="page-screenshot">Screenshot <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -583,6 +658,30 @@
 
     </div>
 
+    <div id="page-screenshot" class="page hidden">
+      <fieldset>
+        <legend>URLs</legend>
+        <textarea id="wb-url-input" class="tool-textarea" rows="3"
+          placeholder="https://example.com/page-one&#10;https://example.com/page-two" spellcheck="false"></textarea>
+      </fieldset>
+      <div class="ops-row" style="align-items:center">
+        <button type="button" class="outline secondary pico-btn-sm" id="wb-start-btn">Capture</button>
+        <button type="button" class="outline secondary pico-btn-sm hidden" id="wb-cancel-btn">Cancel</button>
+        <label class="toggle-label" style="margin-left:auto">
+          <input type="checkbox" id="wb-include-meta" role="switch" style="margin:0">
+          <span>Include metadata</span>
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;min-height:1.4rem;margin-bottom:0.25rem">
+        <small id="wb-status" style="color:var(--pico-muted-color)"></small>
+        <small id="wb-progress" style="color:var(--pico-muted-color)"></small>
+      </div>
+      <div class="ops-row" style="margin-top:0;margin-bottom:0.5rem">
+        <button type="button" class="outline secondary pico-btn-sm" id="wb-download-all-btn" disabled>Download All</button>
+      </div>
+      <div id="wb-results"></div>
+    </div>
+
     <div id="page-settings" class="page hidden">
       <fieldset>
         <legend>Extension</legend>
@@ -596,6 +695,7 @@
             <option value="url-opener">Launch</option>
             <option value="tools">Tools</option>
             <option value="audit">Audit</option>
+            <option value="screenshot">Screenshot</option>
             <option value="settings">Settings</option>
           </select>
         </div>
@@ -613,6 +713,12 @@
             <label class="toggle-label" style="justify-content:space-between;width:100%">
               <span>Audit tab</span>
               <input type="checkbox" id="st-beta-audit" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Screenshot tab</span>
+              <input type="checkbox" id="st-beta-screenshot" role="switch" style="margin:0">
             </label>
           </div>
         </details>
@@ -647,6 +753,50 @@
         <div id="st-download-row" class="ops-row hidden">
           <a id="st-download-link" class="outline secondary pico-btn-sm" style="text-decoration:none" target="_blank" rel="noopener">Download update</a>
         </div>
+      </fieldset>
+      <fieldset>
+        <legend>Screenshot</legend>
+        <details>
+          <summary><span class="section-title">Capture settings</span></summary>
+          <div class="slider-row" style="margin-top:0.5rem">
+            <label style="font-size:var(--small-font-size)">Settle delay</label>
+            <div class="slider-group">
+              <input type="range" id="st-sc-settle" min="0" max="10000" step="100" value="2000" style="flex:1">
+              <span id="st-sc-settle-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">2000 ms</span>
+            </div>
+          </div>
+          <div class="slider-row">
+            <label style="font-size:var(--small-font-size)">Batch delay</label>
+            <div class="slider-group">
+              <input type="range" id="st-sc-batch-delay" min="0" max="3000" step="100" value="500" style="flex:1">
+              <span id="st-sc-batch-delay-val" style="min-width:3.5rem;text-align:right;font-size:var(--small-font-size)">500 ms</span>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span style="font-size:var(--small-font-size)">Viewport width</span>
+            <select id="st-sc-width" style="width:auto;font-size:var(--small-font-size);padding:0.2rem 0.4rem">
+              <option value="1280">1280 px</option>
+              <option value="1440">1440 px</option>
+              <option value="1920">1920 px</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <span style="font-size:var(--small-font-size)">Max page height</span>
+            <select id="st-sc-max-height" style="width:auto;font-size:var(--small-font-size);padding:0.2rem 0.4rem">
+              <option value="4000">4000 px</option>
+              <option value="8000" selected>8000 px</option>
+              <option value="12000">12000 px</option>
+              <option value="16384">16384 px</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <span style="font-size:var(--small-font-size)">Pixel density</span>
+            <select id="st-sc-scale" style="width:auto;font-size:var(--small-font-size);padding:0.2rem 0.4rem">
+              <option value="1" selected>1× standard</option>
+              <option value="2">2× retina</option>
+            </select>
+          </div>
+        </details>
       </fieldset>
       <fieldset>
         <legend>Theme</legend>

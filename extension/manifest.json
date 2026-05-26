@@ -13,7 +13,8 @@
     "commands",
     "scripting",
     "windows",
-    "downloads"
+    "downloads",
+    "debugger"
   ],
 
   "host_permissions": ["<all_urls>"],

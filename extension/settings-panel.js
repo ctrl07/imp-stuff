@@ -65,6 +65,54 @@
       chrome.storage.sync.set({ betaAudit: betaAuditToggle.checked });
     });
 
+    const betaScreenshotToggle = document.getElementById('st-beta-screenshot');
+    chrome.storage.sync.get('betaScreenshot', ({ betaScreenshot }) => {
+      betaScreenshotToggle.checked = !!betaScreenshot;
+    });
+    betaScreenshotToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ betaScreenshot: betaScreenshotToggle.checked });
+    });
+
+    // Screenshot timing / behavior settings
+    const settleSlider     = document.getElementById('st-sc-settle');
+    const settleVal        = document.getElementById('st-sc-settle-val');
+    const batchDelaySlider = document.getElementById('st-sc-batch-delay');
+    const batchDelayVal    = document.getElementById('st-sc-batch-delay-val');
+    const widthSelect      = document.getElementById('st-sc-width');
+    const maxHeightSelect  = document.getElementById('st-sc-max-height');
+    const scaleSelect      = document.getElementById('st-sc-scale');
+
+    chrome.storage.sync.get(
+      { screenshotSettleMs: 2000, screenshotBatchDelayMs: 500, screenshotWidth: 1280, screenshotMaxHeight: 8000, screenshotScale: 1 },
+      ({ screenshotSettleMs, screenshotBatchDelayMs, screenshotWidth, screenshotMaxHeight, screenshotScale }) => {
+        settleSlider.value      = screenshotSettleMs;
+        settleVal.textContent   = screenshotSettleMs + ' ms';
+        batchDelaySlider.value  = screenshotBatchDelayMs;
+        batchDelayVal.textContent = screenshotBatchDelayMs + ' ms';
+        widthSelect.value       = screenshotWidth;
+        maxHeightSelect.value   = screenshotMaxHeight;
+        scaleSelect.value       = screenshotScale;
+      }
+    );
+
+    settleSlider.addEventListener('input', () => {
+      settleVal.textContent = settleSlider.value + ' ms';
+      chrome.storage.sync.set({ screenshotSettleMs: Number(settleSlider.value) });
+    });
+    batchDelaySlider.addEventListener('input', () => {
+      batchDelayVal.textContent = batchDelaySlider.value + ' ms';
+      chrome.storage.sync.set({ screenshotBatchDelayMs: Number(batchDelaySlider.value) });
+    });
+    widthSelect.addEventListener('change', () => {
+      chrome.storage.sync.set({ screenshotWidth: Number(widthSelect.value) });
+    });
+    maxHeightSelect.addEventListener('change', () => {
+      chrome.storage.sync.set({ screenshotMaxHeight: Number(maxHeightSelect.value) });
+    });
+    scaleSelect.addEventListener('change', () => {
+      chrome.storage.sync.set({ screenshotScale: Number(scaleSelect.value) });
+    });
+
     const showDownloadUrlsToggle = document.getElementById('st-show-download-urls');
     chrome.storage.sync.get('showDownloadUrls', ({ showDownloadUrls }) => {
       // default is true (shown); only false if explicitly set

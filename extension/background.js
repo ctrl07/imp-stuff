@@ -148,9 +148,93 @@ chrome.downloads.onDeterminingFilename.addListener((item, suggest) => {
   return true; // async suggest
 });
 
+/* CDP helpers — callback-based to properly consume chrome.runtime.lastError */
+
+const wbAttach = tabId => new Promise((res, rej) =>
+  chrome.debugger.attach({ tabId }, '1.3', () =>
+    chrome.runtime.lastError ? rej(new Error(chrome.runtime.lastError.message)) : res()
+  )
+);
+const wbDetach = tabId => new Promise(res =>
+  chrome.debugger.detach({ tabId }, () => { chrome.runtime.lastError; res(); })
+);
+const wbSend = (tabId, method, params) => new Promise((res, rej) =>
+  chrome.debugger.sendCommand({ tabId }, method, params, r =>
+    chrome.runtime.lastError ? rej(new Error(`${method}: ${chrome.runtime.lastError.message}`)) : res(r)
+  )
+);
+
 /* Message Handling */
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === "WB_SCREENSHOT_TABID") {
+    (async () => {
+      const { tabId, url, includeMeta } = msg;
+      let attached = false;
+      try {
+        // Load capture settings from storage (defaults match the UI defaults)
+        const settings = await new Promise(resolve =>
+          chrome.storage.sync.get(
+            { screenshotSettleMs: 2000, screenshotWidth: 1280, screenshotMaxHeight: 8000, screenshotScale: 1 },
+            resolve
+          )
+        );
+        const { screenshotSettleMs, screenshotWidth, screenshotMaxHeight, screenshotScale } = settings;
+
+        await wbAttach(tabId);
+        attached = true;
+
+        // TODO: auto-hide chat widgets / accessibility tools before capture is unreliable
+        // (GPU-composited iframes don't respect CSS/DOM removal before Page.captureScreenshot).
+        // For now, manually close any overlays on the page before capturing — most widgets
+        // (CarNow, AudioEye, KPA consent) remember the dismissed state in localStorage/sessionStorage
+        // so they won't re-appear for the session or across visits.
+
+        if (screenshotSettleMs > 0) {
+          await new Promise(r => setTimeout(r, screenshotSettleMs));
+        }
+
+        await wbSend(tabId, 'Emulation.setDeviceMetricsOverride', {
+          width: screenshotWidth, height: 800, deviceScaleFactor: screenshotScale, mobile: false,
+        });
+
+        // Measure true content height and resize viewport to fit full page
+        const { result } = await wbSend(tabId, 'Runtime.evaluate', {
+          expression: `Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)`,
+        });
+        const pageHeight = Math.min(result.value || 800, screenshotMaxHeight);
+
+        await wbSend(tabId, 'Emulation.setDeviceMetricsOverride', {
+          width: screenshotWidth, height: pageHeight, deviceScaleFactor: screenshotScale, mobile: false,
+        });
+
+        const { data: screenshotBase64 } = await wbSend(tabId, 'Page.captureScreenshot', {
+          format: 'png', fromSurface: true,
+        });
+
+        let metadata = null;
+        if (includeMeta) {
+          const metaResults = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => ({
+              title:       document.title,
+              description: document.querySelector('meta[name="description"]')?.content || '',
+              h1:          document.querySelector('h1')?.textContent?.trim() || '',
+            }),
+          });
+          metadata = metaResults?.[0]?.result || null;
+        }
+
+        sendResponse({ ok: true, url, screenshotBase64, metadata });
+      } catch (err) {
+        sendResponse({ ok: false, url, error: String(err) });
+      } finally {
+        if (attached) await wbDetach(tabId);
+      }
+    })();
+    return true;
+  }
+
   if (msg.type === "RUN_WEBSITE_INSPECTION") {
     (async () => {
       try {
@@ -179,6 +263,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       }
     })();
     return true;
+  }
+});
+
+/* Keepalive / Wakeup */
+
+chrome.runtime.onConnect.addListener(port => {
+  if (port.name === 'wb-wakeup') {
+    port.onMessage.addListener(() => {});
   }
 });
 
