@@ -14,6 +14,8 @@
   <script src="jszip.min.js" defer></script>
   <script src="jspdf.min.js" defer></script>
   <script src="screenshot-panel.js" defer></script>
+  <script src="geocode-panel.js" defer></script>
+  <script src="timetracker-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
     :root {
@@ -535,8 +537,10 @@
     <nav class="page-tabs" role="tablist">
       <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
       <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
-<button class="page-tab hidden" id="tab-audit" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit <span class="beta-badge">BETA</span></button>
+      <button class="page-tab" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit</button>
       <button class="page-tab hidden" id="tab-screenshot" data-page="screenshot" role="tab" aria-selected="false" aria-controls="page-screenshot">Screenshot <span class="beta-badge">BETA</span></button>
+      <button class="page-tab hidden" id="tab-geocode" data-page="geocode" role="tab" aria-selected="false" aria-controls="page-geocode">Geocode <span class="beta-badge">BETA</span></button>
+      <button class="page-tab hidden" id="tab-timetracker" data-page="timetracker" role="tab" aria-selected="false" aria-controls="page-timetracker">Time Tracker <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -558,7 +562,11 @@
         <button type="button" class="outline secondary pico-btn-sm" id="uo-add-cancel">Cancel</button>
       </div>
       <hr>
-      <textarea class="tool-textarea scratch-pad" placeholder="Note Pad…" spellcheck="false"></textarea>
+      <textarea class="tool-textarea scratch-pad" id="uo-notepad" placeholder="Note Pad…" spellcheck="false"></textarea>
+      <div class="ops-row" style="margin-top:0.3rem">
+        <button type="button" class="outline secondary pico-btn-sm" id="uo-notepad-save">Save</button>
+        <button type="button" class="outline secondary pico-btn-sm" id="uo-notepad-clear">Clear</button>
+      </div>
     </div>
 
     <div id="page-tools" class="page hidden">
@@ -691,6 +699,53 @@
       </div>
     </div>
 
+    <div id="page-geocode" class="page hidden">
+      <fieldset>
+        <legend>Address → Lat / Long</legend>
+        <input type="text" id="gc-address-input" placeholder="123 Main St, Springfield, IL" autocomplete="off">
+        <div class="ops-row">
+          <button type="button" class="outline secondary pico-btn-sm" id="gc-fwd-btn">Look up</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="gc-fwd-clear">Clear</button>
+        </div>
+        <small id="gc-fwd-status"></small>
+        <div id="gc-fwd-result" class="hidden" style="margin-top:0.4rem;padding:0.4rem 0.5rem;background:var(--pico-card-background-color);border-radius:var(--pico-border-radius);border:1px solid var(--pico-card-border-color)"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Lat / Long → Address</legend>
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.3rem">
+          <input type="text" id="gc-lat-input" placeholder="Latitude" autocomplete="off" style="flex:1;margin:0">
+          <input type="text" id="gc-lng-input" placeholder="Longitude" autocomplete="off" style="flex:1;margin:0">
+        </div>
+        <div class="ops-row">
+          <button type="button" class="outline secondary pico-btn-sm" id="gc-rev-btn">Look up</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="gc-rev-clear">Clear</button>
+        </div>
+        <small id="gc-rev-status"></small>
+        <div id="gc-rev-result" class="hidden" style="margin-top:0.4rem;padding:0.4rem 0.5rem;background:var(--pico-card-background-color);border-radius:var(--pico-border-radius);border:1px solid var(--pico-card-border-color)"></div>
+      </fieldset>
+    </div>
+
+    <div id="page-timetracker" class="page hidden">
+      <fieldset>
+        <legend>Log Task</legend>
+        <select id="tt-preset-select" style="margin-bottom:0.4rem"></select>
+        <input type="text" id="tt-task-input" placeholder="Task name" autocomplete="off" style="margin-bottom:0.3rem">
+        <input type="number" id="tt-points-input" placeholder="Points" min="0" step="0.5" style="margin-bottom:0.3rem">
+        <div class="ops-row">
+          <button type="button" class="outline secondary pico-btn-sm" id="tt-log-btn">Log</button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Session — <span id="tt-total">0 pts</span></legend>
+        <div id="tt-list" style="max-height:260px;overflow-y:auto;font-size:0.8rem"></div>
+        <div class="ops-row" style="margin-top:0.4rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="tt-export-btn" disabled>Export CSV</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="tt-clear-btn" disabled>Clear</button>
+        </div>
+        <small id="tt-status"></small>
+      </fieldset>
+    </div>
+
     <div id="page-settings" class="page hidden">
       <fieldset>
         <legend>Extension</legend>
@@ -705,6 +760,8 @@
             <option value="tools">Tools</option>
             <option value="audit">Audit</option>
             <option value="screenshot">Screenshot</option>
+            <option value="geocode">Geocode</option>
+            <option value="timetracker">Time Tracker</option>
             <option value="settings">Settings</option>
           </select>
         </div>
@@ -720,14 +777,20 @@
           </summary>
           <div class="settings-row" style="padding-left:0.75rem">
             <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Audit tab</span>
-              <input type="checkbox" id="st-beta-audit" role="switch" style="margin:0">
+              <span>Screenshot tab</span>
+              <input type="checkbox" id="st-beta-screenshot" role="switch" style="margin:0">
             </label>
           </div>
           <div class="settings-row" style="padding-left:0.75rem">
             <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Screenshot tab</span>
-              <input type="checkbox" id="st-beta-screenshot" role="switch" style="margin:0">
+              <span>Geocode tab</span>
+              <input type="checkbox" id="st-beta-geocode" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Time Tracker tab</span>
+              <input type="checkbox" id="st-beta-timetracker" role="switch" style="margin:0">
             </label>
           </div>
         </details>

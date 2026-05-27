@@ -218,5 +218,32 @@
         if (id) openUrl(URL_TEMPLATES[0], id);
       }
     });
+
+    // Notepad — persist to chrome.storage.local
+    const notepad = document.getElementById('uo-notepad');
+    chrome.storage.local.get('notepadContent', ({ notepadContent }) => {
+      notepad.value = notepadContent || '';
+    });
+
+    let notepadSaveTimer = null;
+    notepad.addEventListener('input', () => {
+      clearTimeout(notepadSaveTimer);
+      notepadSaveTimer = setTimeout(() => {
+        chrome.storage.local.set({ notepadContent: notepad.value });
+      }, 600);
+    });
+
+    document.getElementById('uo-notepad-save').addEventListener('click', () => {
+      clearTimeout(notepadSaveTimer);
+      chrome.storage.local.set({ notepadContent: notepad.value });
+      showToast('Saved', 'success');
+    });
+
+    document.getElementById('uo-notepad-clear').addEventListener('click', () => {
+      notepad.value = '';
+      clearTimeout(notepadSaveTimer);
+      chrome.storage.local.remove('notepadContent');
+      showToast('Cleared', 'success');
+    });
   });
 })();

@@ -57,20 +57,28 @@
       chrome.storage.sync.set({ defaultTab: defaultTabSelect.value });
     });
 
-    const betaAuditToggle = document.getElementById('st-beta-audit');
-    chrome.storage.sync.get('betaAudit', ({ betaAudit }) => {
-      betaAuditToggle.checked = !!betaAudit;
-    });
-    betaAuditToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaAudit: betaAuditToggle.checked });
-    });
-
     const betaScreenshotToggle = document.getElementById('st-beta-screenshot');
     chrome.storage.sync.get('betaScreenshot', ({ betaScreenshot }) => {
       betaScreenshotToggle.checked = !!betaScreenshot;
     });
     betaScreenshotToggle.addEventListener('change', () => {
       chrome.storage.sync.set({ betaScreenshot: betaScreenshotToggle.checked });
+    });
+
+    const betaGeocodeToggle = document.getElementById('st-beta-geocode');
+    chrome.storage.sync.get('betaGeocode', ({ betaGeocode }) => {
+      betaGeocodeToggle.checked = !!betaGeocode;
+    });
+    betaGeocodeToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ betaGeocode: betaGeocodeToggle.checked });
+    });
+
+    const betaTimeTrackerToggle = document.getElementById('st-beta-timetracker');
+    chrome.storage.sync.get('betaTimeTracker', ({ betaTimeTracker }) => {
+      betaTimeTrackerToggle.checked = !!betaTimeTracker;
+    });
+    betaTimeTrackerToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ betaTimeTracker: betaTimeTrackerToggle.checked });
     });
 
     // Screenshot timing / behavior settings
