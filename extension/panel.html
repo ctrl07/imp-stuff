@@ -531,14 +531,24 @@
       align-self: flex-end;
     }
 
+    #tt-date-input {
+      height: auto;
+      padding-top: 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+
+    #tt-timer-reset {
+      margin-bottom: 0;
+    }
+
   </style>
 </head>
 <body>
   <main>
     <nav class="page-tabs" role="tablist">
-      <button class="page-tab active" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
-      <button class="page-tab" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
-      <button class="page-tab" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit</button>
+      <button class="page-tab active" id="tab-url-opener" data-page="url-opener" role="tab" aria-selected="true" aria-controls="page-url-opener">Launch</button>
+      <button class="page-tab" id="tab-tools" data-page="tools" role="tab" aria-selected="false" aria-controls="page-tools">Tools</button>
+      <button class="page-tab" id="tab-audit" data-page="audit" role="tab" aria-selected="false" aria-controls="page-audit">Audit</button>
       <button class="page-tab hidden" id="tab-screenshot" data-page="screenshot" role="tab" aria-selected="false" aria-controls="page-screenshot">Screenshot <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-geocode" data-page="geocode" role="tab" aria-selected="false" aria-controls="page-geocode">Geocode <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-timetracker" data-page="timetracker" role="tab" aria-selected="false" aria-controls="page-timetracker">Time Tracker <span class="beta-badge">BETA</span></button>
@@ -729,20 +739,28 @@
 
     <div id="page-timetracker" class="page hidden">
       <fieldset>
-        <legend>Log Task</legend>
-        <select id="tt-preset-select" style="margin-bottom:0.4rem"></select>
-        <input type="text" id="tt-task-input" placeholder="Task name" autocomplete="off" style="margin-bottom:0.3rem">
-        <input type="number" id="tt-points-input" placeholder="Points" min="0" step="0.5" style="margin-bottom:0.3rem">
-        <div class="ops-row">
-          <button type="button" class="outline secondary pico-btn-sm" id="tt-log-btn">Log</button>
+        <legend id="tt-active-task">Task Tracker</legend>
+        <select id="tt-preset-select" style="margin-bottom:0.3rem;padding:0.25rem 0.5rem;font-size:var(--small-font-size)"></select>
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.3rem">
+          <input type="text" id="tt-task-input" placeholder="Task name" autocomplete="off" style="flex:1;margin:0;padding:0.25rem 0.5rem;font-size:var(--small-font-size)">
+          <input type="number" id="tt-points-input" placeholder="Pts" min="0" step="0.5" style="width:4.5rem;flex-shrink:0;margin:0;padding:0.25rem 0.5rem;font-size:var(--small-font-size)">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.3rem">
+          <input type="date" id="tt-date-input" style="width:auto;margin:0;padding:0.2rem 0.4rem;font-size:var(--small-font-size)">
+          <div style="display:flex;align-items:center;gap:0.3rem">
+            <button type="button" class="outline secondary pico-btn-sm" id="tt-timer-reset" title="Reset timer" style="padding:0.1rem 0.4rem">↺</button>
+            <code id="tt-timer-display" style="font-size:0.95rem;letter-spacing:0.04em;min-width:5rem;text-align:center">00:00:00</code>
+          </div>
         </div>
       </fieldset>
       <fieldset>
-        <legend>Session - <span id="tt-total">0 pts</span></legend>
+        <legend>Total Points: <span id="tt-total">0</span></legend>
         <div id="tt-list" style="max-height:260px;overflow-y:auto;font-size:0.8rem"></div>
         <div class="ops-row" style="margin-top:0.4rem">
           <button type="button" class="outline secondary pico-btn-sm" id="tt-export-btn" disabled>Export CSV</button>
           <button type="button" class="outline secondary pico-btn-sm" id="tt-clear-btn" disabled>Clear</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="tt-timer-btn">Start</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="tt-log-btn">Log</button>
         </div>
         <small id="tt-status"></small>
       </fieldset>
@@ -867,32 +885,50 @@
             <input type="checkbox" id="st-show-download-urls" role="switch" style="margin:0" checked>
           </label>
         </div>
-        <details style="margin-bottom:0.25rem">
+        <details style="margin-bottom:0.25rem" open>
           <summary style="font-size:var(--small-font-size);cursor:pointer;user-select:none;padding:0.25rem 0">
-            Beta features <span class="beta-badge">BETA</span>
+            Tab manager
           </summary>
           <div class="settings-row" style="padding-left:0.75rem">
             <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Screenshot tab</span>
-              <input type="checkbox" id="st-beta-screenshot" role="switch" style="margin:0">
+              <span>Launch tab</span>
+              <input type="checkbox" id="st-tab-url-opener" role="switch" style="margin:0" checked>
             </label>
           </div>
           <div class="settings-row" style="padding-left:0.75rem">
             <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Geocode tab</span>
-              <input type="checkbox" id="st-beta-geocode" role="switch" style="margin:0">
+              <span>Tools tab</span>
+              <input type="checkbox" id="st-tab-tools" role="switch" style="margin:0" checked>
             </label>
           </div>
           <div class="settings-row" style="padding-left:0.75rem">
             <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Time Tracker tab</span>
-              <input type="checkbox" id="st-beta-timetracker" role="switch" style="margin:0">
+              <span>Audit tab</span>
+              <input type="checkbox" id="st-tab-audit" role="switch" style="margin:0" checked>
             </label>
           </div>
           <div class="settings-row" style="padding-left:0.75rem">
             <label class="toggle-label" style="justify-content:space-between;width:100%">
-              <span>Server tab</span>
-              <input type="checkbox" id="st-beta-server" role="switch" style="margin:0">
+              <span>Screenshot tab <span class="beta-badge">BETA</span></span>
+              <input type="checkbox" id="st-tab-screenshot" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Geocode tab <span class="beta-badge">BETA</span></span>
+              <input type="checkbox" id="st-tab-geocode" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Time Tracker tab <span class="beta-badge">BETA</span></span>
+              <input type="checkbox" id="st-tab-timetracker" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Server tab <span class="beta-badge">BETA</span></span>
+              <input type="checkbox" id="st-tab-server" role="switch" style="margin:0">
             </label>
           </div>
         </details>

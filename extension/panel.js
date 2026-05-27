@@ -100,8 +100,17 @@ function showToast(msg, type = 'info', duration = 3000) {
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
 
-    chrome.storage.sync.get(['muteToast', 'betaScreenshot', 'betaGeocode', 'betaTimeTracker', 'betaServer', 'hideBetaBadge', 'defaultTab', 'accentColor', 'bgColor', 'inputColor'], ({ muteToast, betaScreenshot, betaGeocode, betaTimeTracker, betaServer, hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
+    chrome.storage.sync.get(
+      { muteToast: false, showTabLaunch: true, showTabTools: true, showTabAudit: true,
+        betaScreenshot: false, betaGeocode: false, betaTimeTracker: false, betaServer: false,
+        hideBetaBadge: false, defaultTab: null, accentColor: null, bgColor: null, inputColor: null },
+      ({ muteToast, showTabLaunch, showTabTools, showTabAudit,
+         betaScreenshot, betaGeocode, betaTimeTracker, betaServer,
+         hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
+      applyBetaTab('tab-url-opener',   'page-url-opener',   !!showTabLaunch);
+      applyBetaTab('tab-tools',        'page-tools',        !!showTabTools);
+      applyBetaTab('tab-audit',        'page-audit',        !!showTabAudit);
       applyBetaTab('tab-screenshot',   'page-screenshot',   !!betaScreenshot);
       applyBetaTab('tab-geocode',      'page-geocode',      !!betaGeocode);
       applyBetaTab('tab-timetracker',  'page-timetracker',  !!betaTimeTracker);
@@ -119,7 +128,10 @@ function showToast(msg, type = 'info', duration = 3000) {
 
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'sync') return;
-      if ('muteToast'    in changes) _muteToast = !!changes.muteToast.newValue;
+      if ('muteToast'      in changes) _muteToast = !!changes.muteToast.newValue;
+      if ('showTabLaunch'  in changes) applyBetaTab('tab-url-opener',  'page-url-opener',  !!changes.showTabLaunch.newValue);
+      if ('showTabTools'   in changes) applyBetaTab('tab-tools',       'page-tools',       !!changes.showTabTools.newValue);
+      if ('showTabAudit'   in changes) applyBetaTab('tab-audit',       'page-audit',       !!changes.showTabAudit.newValue);
       if ('betaScreenshot'  in changes) applyBetaTab('tab-screenshot',  'page-screenshot',  !!changes.betaScreenshot.newValue);
       if ('betaGeocode'     in changes) applyBetaTab('tab-geocode',     'page-geocode',     !!changes.betaGeocode.newValue);
       if ('betaTimeTracker' in changes) applyBetaTab('tab-timetracker', 'page-timetracker', !!changes.betaTimeTracker.newValue);

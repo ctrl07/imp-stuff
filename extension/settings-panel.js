@@ -57,36 +57,24 @@
       chrome.storage.sync.set({ defaultTab: defaultTabSelect.value });
     });
 
-    const betaScreenshotToggle = document.getElementById('st-beta-screenshot');
-    chrome.storage.sync.get('betaScreenshot', ({ betaScreenshot }) => {
-      betaScreenshotToggle.checked = !!betaScreenshot;
-    });
-    betaScreenshotToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaScreenshot: betaScreenshotToggle.checked });
-    });
-
-    const betaGeocodeToggle = document.getElementById('st-beta-geocode');
-    chrome.storage.sync.get('betaGeocode', ({ betaGeocode }) => {
-      betaGeocodeToggle.checked = !!betaGeocode;
-    });
-    betaGeocodeToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaGeocode: betaGeocodeToggle.checked });
-    });
-
-    const betaTimeTrackerToggle = document.getElementById('st-beta-timetracker');
-    chrome.storage.sync.get('betaTimeTracker', ({ betaTimeTracker }) => {
-      betaTimeTrackerToggle.checked = !!betaTimeTracker;
-    });
-    betaTimeTrackerToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaTimeTracker: betaTimeTrackerToggle.checked });
-    });
-
-    const betaServerToggle = document.getElementById('st-beta-server');
-    chrome.storage.sync.get('betaServer', ({ betaServer }) => {
-      betaServerToggle.checked = !!betaServer;
-    });
-    betaServerToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ betaServer: betaServerToggle.checked });
+    // Tab manager — all tabs
+    const TAB_TOGGLES = [
+      { id: 'st-tab-url-opener',  key: 'showTabLaunch',    def: true  },
+      { id: 'st-tab-tools',       key: 'showTabTools',     def: true  },
+      { id: 'st-tab-audit',       key: 'showTabAudit',     def: true  },
+      { id: 'st-tab-screenshot',  key: 'betaScreenshot',   def: false },
+      { id: 'st-tab-geocode',     key: 'betaGeocode',      def: false },
+      { id: 'st-tab-timetracker', key: 'betaTimeTracker',  def: false },
+      { id: 'st-tab-server',      key: 'betaServer',       def: false },
+    ];
+    const defaults = Object.fromEntries(TAB_TOGGLES.map(t => [t.key, t.def]));
+    chrome.storage.sync.get(defaults, stored => {
+      TAB_TOGGLES.forEach(({ id, key, def }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.checked = stored[key] !== undefined ? !!stored[key] : def;
+        el.addEventListener('change', () => chrome.storage.sync.set({ [key]: el.checked }));
+      });
     });
 
     // Screenshot timing / behavior settings

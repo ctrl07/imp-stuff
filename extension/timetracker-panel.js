@@ -42,6 +42,64 @@
 
   let entries = [];
 
+  // Timer state
+  let timerStartedAt  = null;  // Date when current run began
+  let timerAccumMs    = 0;     // ms accumulated before last pause
+  let timerInterval   = null;  // setInterval handle
+  let timerRunning    = false;
+
+  function timerElapsedMs() {
+    return timerAccumMs + (timerRunning ? Date.now() - timerStartedAt : 0);
+  }
+
+  function fmtDuration(ms) {
+    const s   = Math.floor(ms / 1000);
+    const h   = Math.floor(s / 3600);
+    const m   = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return [h, m, sec].map(n => String(n).padStart(2, '0')).join(':');
+  }
+
+  function fmtDurationShort(secs) {
+    if (!secs) return '';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h) return `${h}h ${m}m ${s}s`;
+    if (m) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
+
+  function updateTimerDisplay() {
+    el('tt-timer-display').textContent = fmtDuration(timerElapsedMs());
+  }
+
+  function startTimer() {
+    if (timerRunning) return;
+    timerRunning   = true;
+    timerStartedAt = Date.now();
+    timerInterval  = setInterval(updateTimerDisplay, 500);
+    el('tt-timer-btn').textContent = '⏸ Pause';
+    updateTimerDisplay();
+  }
+
+  function pauseTimer() {
+    if (!timerRunning) return;
+    timerAccumMs += Date.now() - timerStartedAt;
+    timerRunning   = false;
+    clearInterval(timerInterval);
+    timerInterval  = null;
+    el('tt-timer-btn').textContent = 'Start';
+    updateTimerDisplay();
+  }
+
+  function resetTimer() {
+    pauseTimer();
+    timerAccumMs = 0;
+    timerStartedAt = null;
+    el('tt-timer-display').textContent = '00:00:00';
+  }
+
   // Helpers
 
   function csvCell(val) {
@@ -85,7 +143,7 @@
     list.innerHTML = '';
 
     if (entries.length === 0) {
-      list.innerHTML = '<div style="color:var(--pico-muted-color);padding:0.3rem 0">No tasks logged yet.</div>';
+      list.innerHTML = '<div style="color:var(--pico-muted-color);padding:0.3rem 0">Feeling Productive?</div>';
       updateTotal();
       updateButtons();
       return;
@@ -110,6 +168,10 @@
       ptsSpan.style.cssText = 'flex-shrink:0;color:var(--pico-muted-color);font-size:0.75rem';
       ptsSpan.textContent = `${entry.pts} pts`;
 
+      const durSpan = document.createElement('span');
+      durSpan.style.cssText = 'flex-shrink:0;color:var(--pico-muted-color);font-size:0.75rem';
+      durSpan.textContent = entry.duration ? fmtDurationShort(entry.duration) : '';
+
       const dateSpan = document.createElement('span');
       dateSpan.style.cssText = 'flex-shrink:0;color:var(--pico-muted-color);font-size:0.75rem';
       dateSpan.textContent = `${dateStr} ${timeStr}`;
@@ -128,6 +190,7 @@
 
       row.appendChild(taskSpan);
       row.appendChild(ptsSpan);
+      if (durSpan.textContent) row.appendChild(durSpan);
       row.appendChild(dateSpan);
       row.appendChild(delBtn);
       list.appendChild(row);
@@ -155,6 +218,10 @@
       select.appendChild(opt);
     });
 
+    // Date picker — default to today
+    const dateInput = el('tt-date-input');
+    dateInput.value = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
     // Load persisted entries
     chrome.storage.local.get('timeTrackerEntries', ({ timeTrackerEntries }) => {
       entries = timeTrackerEntries || [];
@@ -169,6 +236,12 @@
       el('tt-points-input').value = preset.pts;
     });
 
+    // Timer buttons
+    el('tt-timer-btn').addEventListener('click', () => {
+      if (timerRunning) pauseTimer(); else startTimer();
+    });
+    el('tt-timer-reset').addEventListener('click', resetTimer);
+
     // Log button
     el('tt-log-btn').addEventListener('click', () => {
       const name = el('tt-task-input').value.trim();
@@ -177,9 +250,12 @@
       if (!name) { showToast('Enter a task name.', 'warning'); return; }
       if (isNaN(pts) || pts < 0) { showToast('Enter a valid points value.', 'warning'); return; }
 
-      entries.push({ name, pts, timestamp: new Date().toISOString() });
+      const durationSecs = Math.floor(timerElapsedMs() / 1000);
+      const pickedDate   = dateInput.value ? new Date(dateInput.value + 'T' + new Date().toTimeString().slice(0, 8)) : new Date();
+      entries.push({ name, pts, timestamp: pickedDate.toISOString(), ...(durationSecs > 0 && { duration: durationSecs }) });
       saveEntries();
       renderList();
+      resetTimer();
 
       // Reset form
       el('tt-task-input').value   = '';
@@ -192,12 +268,13 @@
     // Export CSV
     el('tt-export-btn').addEventListener('click', () => {
       if (!entries.length) return;
-      const header = ['task', 'points', 'date', 'time'].join(',');
+      const header = ['task', 'points', 'duration', 'date', 'time'].join(',');
       const rows = entries.map(e => {
         const dt = new Date(e.timestamp);
         return [
           csvCell(e.name),
           csvCell(e.pts),
+          csvCell(e.duration ? fmtDurationShort(e.duration) : ''),
           csvCell(dt.toLocaleDateString()),
           csvCell(dt.toLocaleTimeString()),
         ].join(',');
