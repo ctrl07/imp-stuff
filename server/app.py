@@ -137,6 +137,20 @@ async def seo_parse_batch(req: SeoParseBatchRequest, background_tasks: Backgroun
 # Staff scrape
 # ---------------------------------------------------------------------------
 
+class StaffSelectors(BaseModel):
+    card:  str = ''
+    name:  str = ''
+    title: str = ''
+    phone: str = ''
+    email: str = ''
+    bio:   str = ''
+    image: str = ''
+
+    def to_dict(self) -> dict[str, str] | None:
+        d = {k: v for k, v in self.model_dump().items() if v}
+        return d or None
+
+
 class StaffRequest(BaseModel):
     url: str
 
@@ -180,8 +194,9 @@ async def staff_scrape(req: StaffRequest, background_tasks: BackgroundTasks):
 # ---------------------------------------------------------------------------
 
 class StaffParseRequest(BaseModel):
-    html: str
-    url: str
+    html:      str
+    url:       str
+    selectors: StaffSelectors = StaffSelectors()
 
 
 @app.post('/staff/parse', dependencies=[Depends(_check_token)])
@@ -194,7 +209,7 @@ async def staff_parse(req: StaffParseRequest, background_tasks: BackgroundTasks)
     async def run():
         try:
             jobs.update(job.id, message='Parsing staff from HTML…')
-            data = await staff_mod.parse_and_package(req.html, req.url)
+            data = await staff_mod.parse_and_package(req.html, req.url, req.selectors.to_dict())
             if data['error']:
                 jobs.update(job.id, status='error', error=data['error'])
                 return

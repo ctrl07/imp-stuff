@@ -760,6 +760,44 @@
         <summary><span class="section-title">Staff Extract</span></summary>
         <p style="font-size:0.78rem;color:var(--pico-muted-color);margin:0.3rem 0 0.5rem">Paste the staff page URL.</p>
         <input type="url" id="sv-staff-url" placeholder="https://dealer.com/about/staff" autocomplete="off">
+
+        <!-- CSS selector overrides -->
+        <details style="margin:0.35rem 0 0.4rem;border:1px solid var(--pico-card-border-color);border-radius:0.35rem;padding:0.3rem 0.4rem">
+          <summary style="font-size:0.75rem;color:var(--pico-muted-color);cursor:pointer;user-select:none;list-style:none;display:flex;justify-content:space-between">
+            <span>Selectors</span><span style="opacity:0.5;font-size:0.7rem">optional</span>
+          </summary>
+          <!-- Preset row -->
+          <div style="display:flex;align-items:center;gap:0.35rem;margin:0.3rem 0 0.35rem">
+            <select id="sv-staff-preset" style="font-size:0.75rem;flex:1;min-width:0;padding:0.2rem 0.35rem;height:auto"></select>
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-staff-delete-btn" style="display:none;color:var(--pico-del-color,#f44336)">Delete</button>
+          </div>
+          <div style="display:grid;grid-template-columns:3.5rem 1fr;gap:0.2rem 0.4rem;align-items:center;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Card</span>
+            <input type="text" id="sv-staff-sel-card"  placeholder=".staff-member" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Name</span>
+            <input type="text" id="sv-staff-sel-name"  placeholder="h2.staff-name" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Title</span>
+            <input type="text" id="sv-staff-sel-title" placeholder=".staff-title" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Phone</span>
+            <input type="text" id="sv-staff-sel-phone" placeholder="a[href^=tel]" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Email</span>
+            <input type="text" id="sv-staff-sel-email" placeholder="a[href^=mailto]" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Bio</span>
+            <input type="text" id="sv-staff-sel-bio"   placeholder=".staff-bio p" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+            <span style="color:var(--pico-muted-color)">Image</span>
+            <input type="text" id="sv-staff-sel-image" placeholder="img.staff-photo" autocomplete="off" style="padding:0.18rem 0.3rem;height:auto;font-size:0.73rem">
+          </div>
+          <!-- Save as preset -->
+          <div style="display:flex;gap:0.35rem;margin-top:0.35rem">
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-staff-save-btn" style="font-size:0.72rem">Save preset</button>
+          </div>
+          <div id="sv-staff-save-form" style="display:none;align-items:center;gap:0.35rem;margin-top:0.35rem">
+            <input type="text" id="sv-staff-save-name" placeholder="Preset name…" style="font-size:0.75rem;flex:1;min-width:0;padding:0.2rem 0.4rem;height:auto" autocomplete="off">
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-staff-save-confirm">Save</button>
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-staff-save-cancel">Cancel</button>
+          </div>
+        </details>
+
         <div class="ops-row" style="margin-top:0.3rem">
           <button type="button" class="outline secondary pico-btn-sm" id="sv-staff-btn">Extract Staff</button>
           <span id="sv-staff-status" style="font-size:0.75rem;color:var(--pico-muted-color)"></span>
@@ -769,7 +807,7 @@
 
       <!-- SEO Bulk -->
       <details>
-        <summary><span class="section-title">SEO Bulk Extract</span></summary>
+        <summary><span class="section-title">Extract SEO</span></summary>
 
         <!-- Preset selector row -->
         <div style="display:flex;align-items:center;gap:0.35rem;margin:0.4rem 0 0.3rem">

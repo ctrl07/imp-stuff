@@ -33,66 +33,96 @@ def _text(tag) -> str:
     return tag.get_text(separator=' ', strip=True) if tag else ''
 
 
-def _parse_staff(html: str, base_url: str) -> list[dict[str, Any]]:
+def _parse_staff(
+    html: str,
+    base_url: str,
+    selectors: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
     """
     Heuristic staff card parser.
-    Looks for repeated structural blocks containing a name + at least one of
-    phone/email/image. Falls back to a flat scan if no cards found.
+    Pass `selectors` to override any step with an explicit CSS selector:
+      card, name, title, phone, email, bio, image
     """
     from urllib.parse import urljoin
 
+    sel = selectors or {}
     soup = BeautifulSoup(html, 'lxml')
 
     # Remove nav/header/footer noise
     for tag in soup.select('nav, header, footer, script, style'):
         tag.decompose()
 
-    # Common card selectors used by DealerOn / typical dealer sites
-    CARD_SELECTORS = [
-        '.staff-member', '.team-member', '.employee', '.person',
-        '[class*="staff"]', '[class*="team-member"]', '[class*="employee"]',
-        'article', '.card',
-    ]
+    # --- Card discovery ---
+    if sel.get('card'):
+        cards: list[Tag] = soup.select(sel['card'])
+    else:
+        CARD_SELECTORS = [
+            '.staff-member', '.team-member', '.employee', '.person',
+            '[class*="staff"]', '[class*="team-member"]', '[class*="employee"]',
+            'article', '.card',
+        ]
+        cards = []
+        for cs in CARD_SELECTORS:
+            found = soup.select(cs)
+            if len(found) >= 2:
+                cards = found
+                break
 
-    cards: list[Tag] = []
-    for sel in CARD_SELECTORS:
-        found = soup.select(sel)
-        if len(found) >= 2:
-            cards = found
-            break
-
-    staff = []
+    staff: list[dict[str, Any]] = []
     seen_names: set[str] = set()
 
     def _extract_card(block: Tag) -> dict[str, Any] | None:
         text = _text(block)
-        phones = _PHONE_RE.findall(text)
-        emails = _EMAIL_RE.findall(text)
 
-        # Name: first heading or strong inside card
-        name_tag = block.find(['h1', 'h2', 'h3', 'h4', 'strong', 'b'])
+        # Phone — selector or regex fallback
+        if sel.get('phone'):
+            phone_tag = block.select_one(sel['phone'])
+            phone = _text(phone_tag) if phone_tag else ''
+        else:
+            phones = _PHONE_RE.findall(text)
+            phone = phones[0] if phones else ''
+
+        # Email — selector or regex fallback
+        if sel.get('email'):
+            email_tag = block.select_one(sel['email'])
+            email = _text(email_tag) if email_tag else ''
+        else:
+            emails = _EMAIL_RE.findall(text)
+            email = emails[0] if emails else ''
+
+        # Name
+        if sel.get('name'):
+            name_tag = block.select_one(sel['name'])
+        else:
+            name_tag = block.find(['h1', 'h2', 'h3', 'h4', 'strong', 'b'])
         name = _text(name_tag) if name_tag else ''
         if not name or name in seen_names:
             return None
         seen_names.add(name)
 
-        # Job title: second heading, or element with class containing 'title'/'position'/'role'
-        title_tag = block.find(class_=re.compile(r'title|position|role|job', re.I))
-        if not title_tag and name_tag:
-            # try next sibling heading
-            for sib in name_tag.find_next_siblings(['h1', 'h2', 'h3', 'h4', 'p', 'span']):
-                t = _text(sib)
-                if t and t != name:
-                    title_tag = sib
-                    break
+        # Title
+        if sel.get('title'):
+            title_tag = block.select_one(sel['title'])
+        else:
+            title_tag = block.find(class_=re.compile(r'title|position|role|job', re.I))
+            if not title_tag and name_tag:
+                for sib in name_tag.find_next_siblings(['h1', 'h2', 'h3', 'h4', 'p', 'span']):
+                    t = _text(sib)
+                    if t and t != name:
+                        title_tag = sib
+                        break
         job_title = _text(title_tag) if title_tag else ''
 
-        # Bio: longest <p> in the card
-        paras = [_text(p) for p in block.find_all('p') if len(_text(p)) > 40]
-        bio = max(paras, key=len) if paras else ''
+        # Bio
+        if sel.get('bio'):
+            bio_tag = block.select_one(sel['bio'])
+            bio = _text(bio_tag) if bio_tag else ''
+        else:
+            paras = [_text(p) for p in block.find_all('p') if len(_text(p)) > 40]
+            bio = max(paras, key=len) if paras else ''
 
         # Image
-        img_tag = block.find('img')
+        img_tag = block.select_one(sel['image']) if sel.get('image') else block.find('img')
         img_url = ''
         if img_tag:
             src = img_tag.get('data-src') or img_tag.get('src') or ''
@@ -102,8 +132,8 @@ def _parse_staff(html: str, base_url: str) -> list[dict[str, Any]]:
         return {
             'name':      name,
             'title':     job_title,
-            'phone':     phones[0] if phones else '',
-            'email':     emails[0] if emails else '',
+            'phone':     phone,
+            'email':     email,
             'bio':       bio,
             'image_url': img_url,
         }
@@ -130,10 +160,14 @@ async def _download_image(
     return filename, None
 
 
-async def parse_and_package(html: str, base_url: str) -> dict[str, Any]:
+async def parse_and_package(
+    html: str,
+    base_url: str,
+    selectors: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Parse staff cards from HTML, download images, return ZIP bytes.
     Called by both scrape() and the extension 403 fallback path."""
-    staff = _parse_staff(html, base_url)
+    staff = _parse_staff(html, base_url, selectors)
     if not staff:
         return {'staff': [], 'error': 'No staff cards detected on this page.', 'zip': None}
 

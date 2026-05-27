@@ -34,7 +34,8 @@
     },
   ];
 
-  let seoUserPresets = [];  // loaded from chrome.storage.sync.seoPresets
+  let seoUserPresets  = [];  // loaded from chrome.storage.sync.seoPresets
+  let staffUserPresets = [];  // loaded from chrome.storage.sync.staffPresets
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -121,7 +122,60 @@
   }
 
   // -------------------------------------------------------------------------
-  // Staff Extract
+  // Staff Extract — preset helpers
+  // -------------------------------------------------------------------------
+
+  const STAFF_SEL_IDS = ['card', 'name', 'title', 'phone', 'email', 'bio', 'image'];
+
+  function renderStaffPresetDropdown() {
+    const sel = document.getElementById('sv-staff-preset');
+    sel.innerHTML = '';
+    if (!staffUserPresets.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No presets saved';
+      opt.disabled = true;
+      opt.selected = true;
+      sel.appendChild(opt);
+    } else {
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = '— select preset —';
+      ph.disabled = true;
+      ph.selected = true;
+      sel.appendChild(ph);
+      staffUserPresets.forEach((p, i) => {
+        const opt = document.createElement('option');
+        opt.value = `u:${i}`;
+        opt.textContent = p.label;
+        sel.appendChild(opt);
+      });
+    }
+    updateStaffDeleteBtn();
+  }
+
+  function updateStaffDeleteBtn() {
+    const sel = document.getElementById('sv-staff-preset');
+    const del = document.getElementById('sv-staff-delete-btn');
+    del.style.display = sel.value.startsWith('u:') ? '' : 'none';
+  }
+
+  function getActiveStaffSelectors() {
+    const sels = {};
+    STAFF_SEL_IDS.forEach(k => {
+      sels[k] = document.getElementById(`sv-staff-sel-${k}`).value.trim();
+    });
+    return sels;
+  }
+
+  function setStaffSelectors(sels) {
+    STAFF_SEL_IDS.forEach(k => {
+      document.getElementById(`sv-staff-sel-${k}`).value = sels[k] || '';
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Staff Extract — results renderer
   // -------------------------------------------------------------------------
 
   function renderStaffResults(container, result) {
@@ -402,12 +456,71 @@
       setStatus('sv-staff-status', 'Opening tab…', false);
       try {
         const html = await fetchPageHtml(url);
-        await runJob('/staff/parse', { html, url },
+        const selectors = getActiveStaffSelectors();
+        await runJob('/staff/parse', { html, url, selectors },
           'sv-staff-status', 'sv-staff-results', renderStaffResults, 'sv-staff-btn');
       } catch (e) {
         setStatus('sv-staff-status', `Error: ${e.message}`, true);
         btn.disabled = false;
       }
+    });
+
+    // -----------------------------------------------------------------------
+    // Staff Extract — preset system
+    // -----------------------------------------------------------------------
+
+    chrome.storage.sync.get(['staffPresets'], data => {
+      staffUserPresets = data.staffPresets || [];
+      renderStaffPresetDropdown();
+    });
+
+    document.getElementById('sv-staff-preset').addEventListener('change', () => {
+      const val = document.getElementById('sv-staff-preset').value;
+      if (!val.startsWith('u:')) return;
+      const idx = parseInt(val.split(':')[1]);
+      setStaffSelectors(staffUserPresets[idx].selectors);
+      updateStaffDeleteBtn();
+    });
+
+    document.getElementById('sv-staff-save-btn').addEventListener('click', () => {
+      document.getElementById('sv-staff-save-form').style.display = 'flex';
+      document.getElementById('sv-staff-save-name').focus();
+    });
+
+    document.getElementById('sv-staff-save-cancel').addEventListener('click', () => {
+      document.getElementById('sv-staff-save-form').style.display = 'none';
+      document.getElementById('sv-staff-save-name').value = '';
+    });
+
+    function confirmSaveStaffPreset() {
+      const name = document.getElementById('sv-staff-save-name').value.trim();
+      if (!name) { showToast('Enter a preset name.', 'warning'); return; }
+      staffUserPresets.push({ label: name, selectors: getActiveStaffSelectors() });
+      chrome.storage.sync.set({ staffPresets: staffUserPresets });
+      renderStaffPresetDropdown();
+      const sel = document.getElementById('sv-staff-preset');
+      sel.value = `u:${staffUserPresets.length - 1}`;
+      updateStaffDeleteBtn();
+      document.getElementById('sv-staff-save-form').style.display = 'none';
+      document.getElementById('sv-staff-save-name').value = '';
+      showToast(`Preset "${name}" saved.`, 'success');
+    }
+
+    document.getElementById('sv-staff-save-confirm').addEventListener('click', confirmSaveStaffPreset);
+    document.getElementById('sv-staff-save-name').addEventListener('keydown', e => {
+      if (e.key === 'Enter') confirmSaveStaffPreset();
+      if (e.key === 'Escape') document.getElementById('sv-staff-save-cancel').click();
+    });
+
+    document.getElementById('sv-staff-delete-btn').addEventListener('click', () => {
+      const val = document.getElementById('sv-staff-preset').value;
+      if (!val.startsWith('u:')) return;
+      const idx = parseInt(val.split(':')[1]);
+      const name = staffUserPresets[idx]?.label || 'preset';
+      staffUserPresets.splice(idx, 1);
+      chrome.storage.sync.set({ staffPresets: staffUserPresets });
+      renderStaffPresetDropdown();
+      showToast(`"${name}" deleted.`, 'info');
     });
 
     // -----------------------------------------------------------------------
