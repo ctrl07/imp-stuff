@@ -17,6 +17,7 @@
   <script src="geocode-panel.js" defer></script>
   <script src="timetracker-panel.js" defer></script>
   <script src="server-panel.js" defer></script>
+  <script src="llm-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
     :root {
@@ -553,6 +554,7 @@
       <button class="page-tab hidden" id="tab-geocode" data-page="geocode" role="tab" aria-selected="false" aria-controls="page-geocode">Geocode <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-timetracker" data-page="timetracker" role="tab" aria-selected="false" aria-controls="page-timetracker">Time Tracker <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-server" data-page="server" role="tab" aria-selected="false" aria-controls="page-server">Server <span class="beta-badge">BETA</span></button>
+      <button class="page-tab hidden" id="tab-llm" data-page="llm" role="tab" aria-selected="false" aria-controls="page-llm">AI <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -771,6 +773,9 @@
       <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;padding:0.4rem 0.6rem;border-radius:0.4rem;background:var(--pico-card-background-color);border:1px solid var(--pico-card-border-color)">
         <span id="sv-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pico-muted-color);flex-shrink:0"></span>
         <span id="sv-status" style="font-size:0.8rem;color:var(--pico-muted-color)">Offline</span>
+        <span style="opacity:0.3;font-size:0.75rem;margin:0 0.1rem">|</span>
+        <span id="sv-ai-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pico-muted-color);flex-shrink:0"></span>
+        <span id="sv-ai-status" style="font-size:0.8rem;color:var(--pico-muted-color)">AI offline</span>
       </div>
 
       <!-- Staff Extract -->
@@ -860,6 +865,42 @@
       </details>
     </div>
 
+    <!-- ── AI / LLM tab ─────────────────────────────────────────────────── -->
+    <div id="page-llm" class="page hidden">
+
+      <!-- Model status bar -->
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;padding:0.4rem 0.6rem;border-radius:0.4rem;background:var(--pico-card-background-color);border:1px solid var(--pico-card-border-color)">
+        <span id="llm-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pico-muted-color);flex-shrink:0"></span>
+        <span id="llm-model-label" style="font-size:0.8rem;color:var(--pico-muted-color)">Offline</span>
+      </div>
+
+      <!-- Quick-prompt chips -->
+      <div id="llm-chips" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.5rem">
+        <button type="button" class="outline secondary pico-btn-sm llm-chip" data-prompt="Write a compelling meta description (under 160 characters) for this page: ">Meta description</button>
+        <button type="button" class="outline secondary pico-btn-sm llm-chip" data-prompt="Suggest 5 SEO-friendly page title tags (under 60 characters) for: ">Page titles</button>
+        <button type="button" class="outline secondary pico-btn-sm llm-chip" data-prompt="Review the following text for SEO quality and list improvements: ">SEO review</button>
+        <button type="button" class="outline secondary pico-btn-sm llm-chip" data-prompt="Rewrite the following content to be more engaging and professional: ">Rewrite</button>
+        <button type="button" class="outline secondary pico-btn-sm llm-chip" data-prompt="Summarise the following text in 2-3 sentences: ">Summarise</button>
+      </div>
+
+      <!-- Prompt input -->
+      <textarea id="llm-prompt" class="tool-textarea" rows="4" placeholder="Ask the AI anything…" style="resize:vertical"></textarea>
+      <div class="ops-row" style="margin-top:0.3rem">
+        <button type="button" class="outline secondary pico-btn-sm" id="llm-send-btn">Send</button>
+        <button type="button" class="outline secondary pico-btn-sm" id="llm-clear-btn">Clear</button>
+        <span id="llm-send-status" style="font-size:0.75rem;color:var(--pico-muted-color)"></span>
+      </div>
+
+      <!-- Response -->
+      <div id="llm-response" style="margin-top:0.6rem;display:none">
+        <div style="font-size:0.72rem;color:var(--pico-muted-color);margin-bottom:0.25rem;display:flex;justify-content:space-between">
+          <span>Response</span>
+          <button type="button" class="outline secondary pico-btn-sm" id="llm-copy-btn" style="padding:0.05rem 0.4rem;font-size:0.7rem">Copy</button>
+        </div>
+        <pre id="llm-response-text" style="white-space:pre-wrap;font-family:var(--pico-font-family);font-size:0.8rem;background:var(--pico-card-background-color);border:1px solid var(--pico-card-border-color);border-radius:0.35rem;padding:0.5rem 0.6rem;margin:0;max-height:280px;overflow-y:auto"></pre>
+      </div>
+    </div>
+
     <div id="page-settings" class="page hidden">
       <fieldset>
         <legend>Extension</legend>
@@ -931,7 +972,19 @@
               <input type="checkbox" id="st-tab-server" role="switch" style="margin:0">
             </label>
           </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>AI tab <span class="beta-badge">BETA</span></span>
+              <input type="checkbox" id="st-tab-llm" role="switch" style="margin:0">
+            </label>
+          </div>
         </details>
+        <div class="settings-row">
+          <label class="toggle-label" style="justify-content:space-between;width:100%">
+            <span>Enable AI features</span>
+            <input type="checkbox" id="st-ai-enabled" role="switch" style="margin:0" checked>
+          </label>
+        </div>
         <div class="settings-row">
           <label class="toggle-label" style="justify-content:space-between;width:100%">
             <span>Hide beta labels</span>

@@ -103,9 +103,11 @@ function showToast(msg, type = 'info', duration = 3000) {
     chrome.storage.sync.get(
       { muteToast: false, showTabLaunch: true, showTabTools: true, showTabAudit: true,
         betaScreenshot: false, betaGeocode: false, betaTimeTracker: false, betaServer: false,
+        betaLlm: false,
         hideBetaBadge: false, defaultTab: null, accentColor: null, bgColor: null, inputColor: null },
       ({ muteToast, showTabLaunch, showTabTools, showTabAudit,
          betaScreenshot, betaGeocode, betaTimeTracker, betaServer,
+         betaLlm,
          hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
       applyBetaTab('tab-url-opener',   'page-url-opener',   !!showTabLaunch);
@@ -115,6 +117,7 @@ function showToast(msg, type = 'info', duration = 3000) {
       applyBetaTab('tab-geocode',      'page-geocode',      !!betaGeocode);
       applyBetaTab('tab-timetracker',  'page-timetracker',  !!betaTimeTracker);
       applyBetaTab('tab-server',       'page-server',       !!betaServer);
+      applyBetaTab('tab-llm',          'page-llm',          !!betaLlm);
       applyHideBetaBadges(!!hideBetaBadge);
       applyAccent(accentColor);
       applyBg(bgColor);
@@ -136,6 +139,7 @@ function showToast(msg, type = 'info', duration = 3000) {
       if ('betaGeocode'     in changes) applyBetaTab('tab-geocode',     'page-geocode',     !!changes.betaGeocode.newValue);
       if ('betaTimeTracker' in changes) applyBetaTab('tab-timetracker', 'page-timetracker', !!changes.betaTimeTracker.newValue);
       if ('betaServer'      in changes) applyBetaTab('tab-server',      'page-server',      !!changes.betaServer.newValue);
+      if ('betaLlm'         in changes) applyBetaTab('tab-llm',         'page-llm',         !!changes.betaLlm.newValue);
       if ('hideBetaBadge' in changes) applyHideBetaBadges(!!changes.hideBetaBadge.newValue);
       if ('accentColor'  in changes) applyAccent(changes.accentColor.newValue);
       if ('bgColor'      in changes) applyBg(changes.bgColor.newValue);

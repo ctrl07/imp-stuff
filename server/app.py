@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from . import config as cfg
 from . import jobs
+from . import llm as llm_mod
 from . import seo as seo_mod
 from . import staff as staff_mod
 
@@ -56,6 +57,26 @@ app.add_middleware(
 @app.get('/health')
 async def health():
     return {'status': 'ok', 'version': VERSION}
+
+
+@app.get('/llm/status')
+async def llm_status():
+    available = await llm_mod.is_available()
+    return {'available': available, 'model': cfg.llm_model(), 'enabled': cfg.llm_enabled()}
+
+
+class LlmChatRequest(BaseModel):
+    prompt: str
+
+
+@app.post('/llm/chat', dependencies=[Depends(_check_token)])
+async def llm_chat(req: LlmChatRequest):
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail='prompt is required')
+    if not await llm_mod.is_available():
+        raise HTTPException(status_code=503, detail='LLM not available')
+    response = await llm_mod.chat(req.prompt)
+    return {'response': response}
 
 
 # ---------------------------------------------------------------------------

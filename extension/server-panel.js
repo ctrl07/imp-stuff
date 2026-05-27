@@ -63,6 +63,21 @@
     }
   }
 
+  function setAiDot(available) {
+    const dot    = document.getElementById('sv-ai-dot');
+    const status = document.getElementById('sv-ai-status');
+    if (!dot) return;
+    if (available) {
+      dot.style.background = '#4caf50';
+      status.textContent   = 'AI ready';
+      status.style.color   = '';
+    } else {
+      dot.style.background = 'var(--pico-muted-color)';
+      status.textContent   = 'AI offline';
+      status.style.color   = 'var(--pico-muted-color)';
+    }
+  }
+
   async function checkBackend() {
     try {
       const r = await fetch(`${BACKEND}/health`, { signal: AbortSignal.timeout(1500) });
@@ -70,6 +85,17 @@
     } catch {
       setDot(false);
     }
+    // AI dot — only check if aiEnabled in storage
+    chrome.storage.sync.get({ aiEnabled: true }, async ({ aiEnabled }) => {
+      if (!aiEnabled) { setAiDot(false); return; }
+      try {
+        const r    = await fetch(`${BACKEND}/llm/status`, { signal: AbortSignal.timeout(2000) });
+        const data = r.ok ? await r.json() : {};
+        setAiDot(!!(data.available));
+      } catch {
+        setAiDot(false);
+      }
+    });
   }
 
   async function pollJob(jobId, onProgress, onDone, onError) {

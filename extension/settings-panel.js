@@ -66,6 +66,7 @@
       { id: 'st-tab-geocode',     key: 'betaGeocode',      def: false },
       { id: 'st-tab-timetracker', key: 'betaTimeTracker',  def: false },
       { id: 'st-tab-server',      key: 'betaServer',       def: false },
+      { id: 'st-tab-llm',         key: 'betaLlm',          def: false },
     ];
     const defaults = Object.fromEntries(TAB_TOGGLES.map(t => [t.key, t.def]));
     chrome.storage.sync.get(defaults, stored => {
@@ -76,6 +77,17 @@
         el.addEventListener('change', () => chrome.storage.sync.set({ [key]: el.checked }));
       });
     });
+
+    // AI enabled toggle
+    const aiEnabledEl = document.getElementById('st-ai-enabled');
+    if (aiEnabledEl) {
+      chrome.storage.sync.get({ aiEnabled: true }, ({ aiEnabled }) => {
+        aiEnabledEl.checked = !!aiEnabled;
+      });
+      aiEnabledEl.addEventListener('change', () => {
+        chrome.storage.sync.set({ aiEnabled: aiEnabledEl.checked });
+      });
+    }
 
     // Screenshot timing / behavior settings
     const settleSlider       = document.getElementById('st-sc-settle');

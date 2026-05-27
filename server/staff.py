@@ -11,6 +11,8 @@ from typing import Any
 import httpx
 from bs4 import BeautifulSoup, Tag
 
+from . import llm as llm_mod
+
 HEADERS = {
     'User-Agent': (
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -37,7 +39,7 @@ def _parse_staff(
     html: str,
     base_url: str,
     selectors: dict[str, str] | None = None,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[Tag]]:
     """
     Heuristic staff card parser.
     Pass `selectors` to override any step with an explicit CSS selector:
@@ -138,12 +140,39 @@ def _parse_staff(
             'image_url': img_url,
         }
 
+    matched_cards: list[Tag] = []
     for card in cards:
         entry = _extract_card(card)
         if entry:
             staff.append(entry)
+            matched_cards.append(card)
 
-    return staff
+    return staff, matched_cards
+
+
+async def _llm_enrich(staff: list[dict[str, Any]], cards: list[Tag]) -> None:
+    """Fill empty fields with LLM-extracted values. Mutates staff in-place.
+    Only called when llm_mod.is_available() is True."""
+    for member, card in zip(staff, cards):
+        text = card.get_text(separator=' ', strip=True)[:800]
+
+        if not member['title']:
+            member['title'] = await llm_mod.chat(
+                'Extract only the job title of the staff member from this text. '
+                'Return just the title with no explanation.\n\n' + text
+            )
+
+        if not member['phone']:
+            member['phone'] = await llm_mod.chat(
+                'Extract a phone number from this text. '
+                'Return only the number, or an empty string if there is none.\n\n' + text
+            )
+
+        if not member['bio']:
+            member['bio'] = await llm_mod.chat(
+                'Extract the biographical description of this staff member from the text. '
+                'Return only the bio text with no explanation.\n\n' + text
+            )
 
 
 async def _download_image(
@@ -167,9 +196,26 @@ async def parse_and_package(
 ) -> dict[str, Any]:
     """Parse staff cards from HTML, download images, return ZIP bytes.
     Called by both scrape() and the extension 403 fallback path."""
-    staff = _parse_staff(html, base_url, selectors)
+    sel = selectors or {}
+    staff, matched_cards = _parse_staff(html, base_url, sel)
+
+    # LLM card-detection retry — if nothing found and no explicit card selector
+    if not staff and not sel.get('card') and await llm_mod.is_available():
+        from bs4 import BeautifulSoup as _BS
+        page_snippet = _BS(html, 'lxml').get_text(separator='\n', strip=True)[:2000]
+        suggested = await llm_mod.chat(
+            'Given this page text, what CSS selector would select individual staff member cards? '
+            'Return only the CSS selector string, nothing else.\n\n' + page_snippet
+        )
+        if suggested:
+            staff, matched_cards = _parse_staff(html, base_url, {**sel, 'card': suggested.strip()})
+
     if not staff:
         return {'staff': [], 'error': 'No staff cards detected on this page.', 'zip': None}
+
+    # LLM field enrichment — fill empty title / phone / bio
+    if matched_cards and await llm_mod.is_available():
+        await _llm_enrich(staff, matched_cards)
 
     # Download images in parallel
     async with httpx.AsyncClient(headers=HEADERS) as client:
@@ -207,9 +253,9 @@ async def parse_and_package(
     return {'staff': staff, 'error': '', 'zip': zip_bytes}
 
 
-async def scrape(url: str) -> dict[str, Any]:
+async def scrape(url: str, selectors: dict[str, str] | None = None) -> dict[str, Any]:
     """Fetch URL with httpx then parse. Raises httpx.HTTPStatusError on 4xx/5xx."""
     async with httpx.AsyncClient(headers=HEADERS) as client:
         r = await client.get(url, timeout=20, follow_redirects=True)
         r.raise_for_status()
-    return await parse_and_package(r.text, url)
+    return await parse_and_package(r.text, url, selectors)
