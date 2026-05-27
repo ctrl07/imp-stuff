@@ -16,6 +16,7 @@
   <script src="screenshot-panel.js" defer></script>
   <script src="geocode-panel.js" defer></script>
   <script src="timetracker-panel.js" defer></script>
+  <script src="server-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
     :root {
@@ -541,6 +542,7 @@
       <button class="page-tab hidden" id="tab-screenshot" data-page="screenshot" role="tab" aria-selected="false" aria-controls="page-screenshot">Screenshot <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-geocode" data-page="geocode" role="tab" aria-selected="false" aria-controls="page-geocode">Geocode <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-timetracker" data-page="timetracker" role="tab" aria-selected="false" aria-controls="page-timetracker">Time Tracker <span class="beta-badge">BETA</span></button>
+      <button class="page-tab hidden" id="tab-server" data-page="server" role="tab" aria-selected="false" aria-controls="page-server">Server <span class="beta-badge">BETA</span></button>
       <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -736,7 +738,7 @@
         </div>
       </fieldset>
       <fieldset>
-        <legend>Session — <span id="tt-total">0 pts</span></legend>
+        <legend>Session - <span id="tt-total">0 pts</span></legend>
         <div id="tt-list" style="max-height:260px;overflow-y:auto;font-size:0.8rem"></div>
         <div class="ops-row" style="margin-top:0.4rem">
           <button type="button" class="outline secondary pico-btn-sm" id="tt-export-btn" disabled>Export CSV</button>
@@ -744,6 +746,62 @@
         </div>
         <small id="tt-status"></small>
       </fieldset>
+    </div>
+
+    <div id="page-server" class="page hidden">
+      <!-- Connection status -->
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;padding:0.4rem 0.6rem;border-radius:0.4rem;background:var(--pico-card-background-color);border:1px solid var(--pico-card-border-color)">
+        <span id="sv-dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--pico-muted-color);flex-shrink:0"></span>
+        <span id="sv-status" style="font-size:0.8rem;color:var(--pico-muted-color)">Offline</span>
+      </div>
+
+      <!-- Staff Extract -->
+      <details>
+        <summary><span class="section-title">Staff Extract</span></summary>
+        <p style="font-size:0.78rem;color:var(--pico-muted-color);margin:0.3rem 0 0.5rem">Paste the staff page URL.</p>
+        <input type="url" id="sv-staff-url" placeholder="https://dealer.com/about/staff" autocomplete="off">
+        <div class="ops-row" style="margin-top:0.3rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="sv-staff-btn">Extract Staff</button>
+          <span id="sv-staff-status" style="font-size:0.75rem;color:var(--pico-muted-color)"></span>
+        </div>
+        <div id="sv-staff-results" style="margin-top:0.5rem"></div>
+      </details>
+
+      <!-- SEO Bulk -->
+      <details>
+        <summary><span class="section-title">SEO Bulk Extract</span></summary>
+
+        <!-- Preset selector row -->
+        <div style="display:flex;align-items:center;gap:0.35rem;margin:0.4rem 0 0.3rem">
+          <select id="sv-seo-preset" style="font-size:0.75rem;flex:1;min-width:0;padding:0.2rem 0.35rem;height:auto"></select>
+          <button type="button" class="outline secondary pico-btn-sm" id="sv-seo-delete-btn" title="Delete this preset" style="display:none;color:var(--pico-del-color,#f44336)">Delete</button>
+        </div>
+
+        <!-- Field editor -->
+        <details style="margin-bottom:0.4rem;border:1px solid var(--pico-card-border-color);border-radius:0.35rem;padding:0.3rem 0.4rem">
+          <summary style="font-size:0.75rem;color:var(--pico-muted-color);cursor:pointer;user-select:none;list-style:none;display:flex;justify-content:space-between">
+            <span>Fields</span><span style="opacity:0.5;font-size:0.7rem">click to edit</span>
+          </summary>
+          <div id="sv-seo-fields" style="margin-top:0.4rem"></div>
+          <div style="display:flex;gap:0.35rem;margin-top:0.35rem">
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-seo-add-field" style="font-size:0.72rem">+ Add field</button>
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-seo-save-btn" style="font-size:0.72rem" title="Save current fields as a new preset">Save as preset…</button>
+          </div>
+          <!-- Save-as inline form (hidden until Save clicked) -->
+          <div id="sv-seo-save-form" style="display:none;align-items:center;gap:0.35rem;margin-top:0.35rem">
+            <input type="text" id="sv-seo-save-name" placeholder="Preset name…" style="font-size:0.75rem;flex:1;min-width:0;padding:0.2rem 0.4rem;height:auto" autocomplete="off">
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-seo-save-confirm">Save</button>
+            <button type="button" class="outline secondary pico-btn-sm" id="sv-seo-save-cancel">Cancel</button>
+          </div>
+        </details>
+
+        <textarea id="sv-seo-urls" class="tool-textarea" rows="5" placeholder="https://dealer.com/page-1&#10;https://dealer.com/page-2"></textarea>
+        <div class="ops-row" style="margin-top:0.3rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="sv-seo-btn">Extract</button>
+          <span id="sv-seo-status" style="font-size:0.75rem;color:var(--pico-muted-color)"></span>
+        </div>
+        <div id="sv-seo-results" style="margin-top:0.5rem"></div>
+      </details>
     </div>
 
     <div id="page-settings" class="page hidden">
@@ -791,6 +849,12 @@
             <label class="toggle-label" style="justify-content:space-between;width:100%">
               <span>Time Tracker tab</span>
               <input type="checkbox" id="st-beta-timetracker" role="switch" style="margin:0">
+            </label>
+          </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Server tab</span>
+              <input type="checkbox" id="st-beta-server" role="switch" style="margin:0">
             </label>
           </div>
         </details>

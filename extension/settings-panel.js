@@ -81,6 +81,14 @@
       chrome.storage.sync.set({ betaTimeTracker: betaTimeTrackerToggle.checked });
     });
 
+    const betaServerToggle = document.getElementById('st-beta-server');
+    chrome.storage.sync.get('betaServer', ({ betaServer }) => {
+      betaServerToggle.checked = !!betaServer;
+    });
+    betaServerToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ betaServer: betaServerToggle.checked });
+    });
+
     // Screenshot timing / behavior settings
     const settleSlider       = document.getElementById('st-sc-settle');
     const settleVal          = document.getElementById('st-sc-settle-val');
