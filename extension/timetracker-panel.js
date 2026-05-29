@@ -72,6 +72,7 @@
 
   function updateTimerDisplay() {
     el('tt-timer-display').textContent = fmtDuration(timerElapsedMs());
+    saveActiveTask();
   }
 
   function startTimer() {
@@ -98,6 +99,7 @@
     timerAccumMs = 0;
     timerStartedAt = null;
     el('tt-timer-display').textContent = '00:00:00';
+    saveActiveTask();
   }
 
   // Helpers
@@ -125,6 +127,22 @@
 
   function saveEntries() {
     chrome.storage.local.set({ timeTrackerEntries: entries });
+  }
+
+  function saveActiveTask() {
+    chrome.storage.local.set({
+      timeTrackerActive: {
+        taskName:     el('tt-task-input').value,
+        points:       el('tt-points-input').value,
+        timerAccumMs: timerAccumMs + (timerRunning ? Date.now() - timerStartedAt : 0),
+        timerRunning,
+        savedAt:      timerRunning ? Date.now() : null,
+      }
+    });
+  }
+
+  function clearActiveTask() {
+    chrome.storage.local.remove('timeTrackerActive');
   }
 
   function updateTotal() {
@@ -222,11 +240,30 @@
     const dateInput = el('tt-date-input');
     dateInput.value = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 
-    // Load persisted entries
-    chrome.storage.local.get('timeTrackerEntries', ({ timeTrackerEntries }) => {
+    // Load persisted entries and active task state
+    chrome.storage.local.get(['timeTrackerEntries', 'timeTrackerActive'], ({ timeTrackerEntries, timeTrackerActive }) => {
       entries = timeTrackerEntries || [];
       renderList();
+
+      if (timeTrackerActive) {
+        el('tt-task-input').value   = timeTrackerActive.taskName || '';
+        el('tt-points-input').value = timeTrackerActive.points   || '';
+
+        if (timeTrackerActive.timerRunning && timeTrackerActive.savedAt) {
+          // Resume: add time elapsed while the panel was closed
+          timerAccumMs = timeTrackerActive.timerAccumMs + (Date.now() - timeTrackerActive.savedAt);
+          startTimer();
+        } else if (timeTrackerActive.timerAccumMs > 0) {
+          // Paused with accumulated time — restore display without starting
+          timerAccumMs = timeTrackerActive.timerAccumMs;
+          updateTimerDisplay();
+        }
+      }
     });
+
+    // Persist active task on input changes
+    el('tt-task-input').addEventListener('input', saveActiveTask);
+    el('tt-points-input').addEventListener('input', saveActiveTask);
 
     // Preset selection auto-fills name + points
     select.addEventListener('change', () => {
@@ -234,6 +271,7 @@
       const preset = JSON.parse(select.value);
       el('tt-task-input').value   = preset.name;
       el('tt-points-input').value = preset.pts;
+      saveActiveTask();
     });
 
     // Timer buttons
@@ -261,6 +299,7 @@
       el('tt-task-input').value   = '';
       el('tt-points-input').value = '';
       select.value = '';
+      clearActiveTask();
 
       showToast(`"${name}" logged (+${pts} pts)`, 'success');
     });
