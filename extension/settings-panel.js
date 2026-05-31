@@ -191,6 +191,14 @@
       chrome.storage.sync.set({ muteToast: muteToastToggle.checked });
     });
 
+    const cacheBtnToggle = document.getElementById('st-cache-btn');
+    chrome.storage.sync.get({ showCacheBtn: false }, ({ showCacheBtn }) => {
+      cacheBtnToggle.checked = !!showCacheBtn;
+    });
+    cacheBtnToggle.addEventListener('change', () => {
+      chrome.storage.sync.set({ showCacheBtn: cacheBtnToggle.checked });
+    });
+
     const hideOverlaysToggle = document.getElementById('st-hide-overlays');
     chrome.storage.sync.get({ hideOverlays: false }, ({ hideOverlays }) => {
       hideOverlaysToggle.checked = !!hideOverlays;

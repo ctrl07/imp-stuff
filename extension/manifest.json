@@ -33,6 +33,11 @@
       "matches": ["<all_urls>"],
       "js": ["hide-overlays.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["cache-button.js"],
+      "run_at": "document_idle"
     }
   ],
 
