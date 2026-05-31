@@ -163,7 +163,41 @@
 
   // Init
 
+  async function refreshDealerBadge() {
+    const badge = el('uo-dealer-badge');
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id || !tab.url?.startsWith('http')) { badge.style.display = 'none'; return; }
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const s = document.getElementById('dealeron_website_metadata');
+          if (!s) return null;
+          try { return JSON.parse(s.textContent).dealerId ?? null; } catch { return null; }
+        },
+      });
+      if (result) {
+        badge.textContent = `#${result}`;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+    } catch {
+      badge.style.display = 'none';
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    refreshDealerBadge();
+
+    chrome.tabs.onActivated.addListener(() => refreshDealerBadge());
+    chrome.tabs.onUpdated.addListener((tabId, info) => {
+      if (info.status === 'complete') refreshDealerBadge();
+    });
+
+    document.querySelector('[data-page="url-opener"]')
+      ?.addEventListener('click', () => refreshDealerBadge());
+
     document.getElementById('st-open-busted').addEventListener('click', () => {
       chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
         if (!tab || !tab.url || !tab.url.startsWith('http')) return;

@@ -37,30 +37,3 @@ def backend_port() -> int:
 
 def backend_token() -> str:
     return get().get('backend', {}).get('token', '')
-
-
-# ---------------------------------------------------------------------------
-# LLM (Ollama)
-# ---------------------------------------------------------------------------
-
-def _llm() -> dict:
-    return get().get('llm', {})
-
-
-def llm_enabled() -> bool:
-    """True unless explicitly disabled in config. Defaults to True so Ollama
-    is used automatically when it is running."""
-    return bool(_llm().get('enabled', True))
-
-
-def llm_model() -> str:
-    return _llm().get('model', 'llama3.2:3b')
-
-
-def ollama_url() -> str:
-    return _llm().get('ollama_url', 'http://localhost:11434').rstrip('/')
-
-
-def llm_timeout() -> float:
-    """Per-request timeout in seconds for LLM calls."""
-    return float(_llm().get('timeout', 30))
