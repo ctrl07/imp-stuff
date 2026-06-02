@@ -65,7 +65,6 @@
       { id: 'st-tab-screenshot',  key: 'betaScreenshot',   def: false },
       { id: 'st-tab-geocode',     key: 'betaGeocode',      def: false },
       { id: 'st-tab-timetracker', key: 'betaTimeTracker',  def: false },
-      { id: 'st-tab-server',      key: 'betaServer',       def: false },
     ];
     const defaults = Object.fromEntries(TAB_TOGGLES.map(t => [t.key, t.def]));
     chrome.storage.sync.get(defaults, stored => {
