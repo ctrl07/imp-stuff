@@ -1,25 +1,6 @@
 'use strict';
 
 (function initUrlOpenerPanel() {
-  // Edit this array to add, remove, or reorder destinations
-  // Use {id} as the placeholder for the dealer ID.
-  // Entries without {id} (e.g. BAM) are always openable regardless of input.
-  const URL_TEMPLATES = [
-    { label: 'Site Content',  url: 'https://cms.dealeron.com/dash/dist/cms/#/{id}/siteContent' },
-    { label: 'SEO',           url: 'https://cms.dealeron.com/dash/dist/cms/#/{id}/EditAllSeo' },
-    { label: 'Banners',       url: 'https://cms.dealeron.com/dash/dist/cms/#/{id}/homepageBanners' },
-    { label: 'Blogs',         url: 'https://cms.dealeron.com/dash/dist/cms/#/{id}/manageBlogs' },
-    { label: 'Redirects',     url: 'https://cms.dealeron.com/dash/dist/cms/#/{id}/urlRedirects' },
-    { label: 'Dealer Info',   url: 'https://cms.dealeron.com/dash/dist/dealerInfo/#/dealer/{id}/tab/general' },
-    { label: 'Staff',         url: 'https://staff.dealeron.com/#/{id}/staff-directory-legacy' },
-    { label: 'Specials',      url: 'https://specials.dealeron.com/#/specials/dealer/{id}/view/New' },
-    { label: 'Gallery',       url: 'https://gallery.dealeron.com/#/{id}' },
-    { label: 'Integrations',  url: 'https://tpi.dealeron.com/#/{id}/thirdPartyIntegrations' },
-    { label: 'OEM Settings',  url: 'https://oemsettings.dealeron.com/#/{id}/settings' },
-    { label: 'Google Ads',    url: 'https://gmanbaa.dealeron.us/#/{id}/google-account-manager' },
-    { label: 'Admin Tools',   url: 'https://clientconfig.dealeron.com/#/{id}/adminTools' },
-    { label: 'BAM',           url: 'https://bam.dealeron.com/#/' },
-  ];
   
 
   let customTemplates  = [];
@@ -56,11 +37,6 @@
   function renderAllButtons(input) {
     const container = document.getElementById('uo-buttons');
     container.innerHTML = '';
-
-    // Built-in template buttons
-    URL_TEMPLATES.forEach(template => {
-      container.appendChild(makeTemplateBtn(template, input));
-    });
 
     // Custom template buttons with delete (×)
     customTemplates.forEach((template, index) => {
@@ -247,9 +223,9 @@
     input.addEventListener('input', () => syncButtons(input));
 
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && URL_TEMPLATES.length === 1) {
+      if (e.key === 'Enter' && customTemplates.length === 1) {
         const id = input.value.trim();
-        if (id) openUrl(URL_TEMPLATES[0], id);
+        if (id) openUrl(customTemplates[0], id);
       }
     });
 
