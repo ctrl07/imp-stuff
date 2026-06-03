@@ -62,8 +62,8 @@
       { id: 'st-tab-url-opener',  key: 'showTabLaunch',    def: true  },
       { id: 'st-tab-tools',       key: 'showTabTools',     def: true  },
       { id: 'st-tab-audit',       key: 'showTabAudit',     def: true  },
+      { id: 'st-tab-geocode',     key: 'showTabGeocode',   def: true  },
       { id: 'st-tab-screenshot',  key: 'betaScreenshot',   def: false },
-      { id: 'st-tab-geocode',     key: 'betaGeocode',      def: false },
       { id: 'st-tab-timetracker', key: 'betaTimeTracker',  def: false },
       { id: 'st-tab-staff',      key: 'betaStaff',        def: false },
     ];

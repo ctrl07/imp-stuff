@@ -101,18 +101,18 @@ function showToast(msg, type = 'info', duration = 3000) {
     initTabs();
 
     chrome.storage.sync.get(
-      { muteToast: false, showTabLaunch: true, showTabTools: true, showTabAudit: true,
-        betaScreenshot: false, betaGeocode: false, betaTimeTracker: false, betaStaff: false,
+      { muteToast: false, showTabLaunch: true, showTabTools: true, showTabAudit: true, showTabGeocode: true,
+        betaScreenshot: false, betaTimeTracker: false, betaStaff: false,
         hideBetaBadge: false, defaultTab: null, accentColor: null, bgColor: null, inputColor: null },
-      ({ muteToast, showTabLaunch, showTabTools, showTabAudit,
-         betaScreenshot, betaGeocode, betaTimeTracker, betaStaff,
+      ({ muteToast, showTabLaunch, showTabTools, showTabAudit, showTabGeocode,
+         betaScreenshot, betaTimeTracker, betaStaff,
          hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
       applyBetaTab('tab-url-opener',   'page-url-opener',   !!showTabLaunch);
       applyBetaTab('tab-tools',        'page-tools',        !!showTabTools);
       applyBetaTab('tab-audit',        'page-audit',        !!showTabAudit);
+      applyBetaTab('tab-geocode',      'page-geocode',      !!showTabGeocode);
       applyBetaTab('tab-screenshot',   'page-screenshot',   !!betaScreenshot);
-      applyBetaTab('tab-geocode',      'page-geocode',      !!betaGeocode);
       applyBetaTab('tab-timetracker',  'page-timetracker',  !!betaTimeTracker);
       applyBetaTab('tab-staff',        'page-staff',        !!betaStaff);
       applyHideBetaBadges(!!hideBetaBadge);
@@ -132,8 +132,8 @@ function showToast(msg, type = 'info', duration = 3000) {
       if ('showTabLaunch'  in changes) applyBetaTab('tab-url-opener',  'page-url-opener',  !!changes.showTabLaunch.newValue);
       if ('showTabTools'   in changes) applyBetaTab('tab-tools',       'page-tools',       !!changes.showTabTools.newValue);
       if ('showTabAudit'   in changes) applyBetaTab('tab-audit',       'page-audit',       !!changes.showTabAudit.newValue);
+      if ('showTabGeocode' in changes) applyBetaTab('tab-geocode',    'page-geocode',     !!changes.showTabGeocode.newValue);
       if ('betaScreenshot'  in changes) applyBetaTab('tab-screenshot',  'page-screenshot',  !!changes.betaScreenshot.newValue);
-      if ('betaGeocode'     in changes) applyBetaTab('tab-geocode',     'page-geocode',     !!changes.betaGeocode.newValue);
       if ('betaTimeTracker' in changes) applyBetaTab('tab-timetracker', 'page-timetracker', !!changes.betaTimeTracker.newValue);
       if ('betaStaff' in changes) applyBetaTab('tab-staff', 'page-staff', !!changes.betaStaff.newValue);
       if ('hideBetaBadge' in changes) applyHideBetaBadges(!!changes.hideBetaBadge.newValue);
