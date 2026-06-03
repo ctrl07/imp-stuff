@@ -33,6 +33,57 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse(extractSnapshot());
     return true;
   }
+
+  if (msg.type === 'STAFF_ADD_EMPLOYEE') {
+    (async () => {
+      try {
+        const emp = msg.employee;
+
+        function triggerEvents(el) {
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          el.dispatchEvent(new Event('blur', { bubbles: true }));
+          const sim = new Event('input', { bubbles: true });
+          sim.simulated = true;
+          el.dispatchEvent(sim);
+        }
+
+        function setVal(id, value) {
+          if (!value) return;
+          const el = document.getElementById(id);
+          if (el) { el.value = value; triggerEvents(el); }
+        }
+
+        const sidebar = document.querySelector('.slideout-builder.open');
+        if (!sidebar) return sendResponse({ error: 'Add Employee slideout is not open. Please open it manually before running the batch.' });
+
+        setVal('employee-slideout-name', emp.name);
+        setVal('employee-slideout-title', emp.title);
+        setVal('employee-slideout-email', emp.email);
+        setVal('employee-slideout-phone1', emp.phone1);
+        setVal('employee-slideout-phone2', emp.phone2);
+        setVal('employee-slideout-textme', emp.textme);
+        setVal('employee-slideout-photo', emp.photo);
+
+        if (emp.biography) {
+          const bioEl = document.getElementById('employee-slideout-biography');
+          if (bioEl) { bioEl.value = emp.biography; triggerEvents(bioEl); }
+        }
+
+        await new Promise(r => setTimeout(r, 300));
+
+        const confirmBtn = document.getElementById('employee-slideout-confirm');
+        if (!confirmBtn) return sendResponse({ error: 'Confirm button (#employee-slideout-confirm) not found.' });
+        confirmBtn.click();
+
+        await new Promise(r => setTimeout(r, 600));
+        sendResponse({ ok: true });
+      } catch (e) {
+        sendResponse({ error: String(e) });
+      }
+    })();
+    return true;
+  }
 });
 
 function extractSnapshot() {

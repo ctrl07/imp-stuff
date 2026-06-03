@@ -102,10 +102,10 @@ function showToast(msg, type = 'info', duration = 3000) {
 
     chrome.storage.sync.get(
       { muteToast: false, showTabLaunch: true, showTabTools: true, showTabAudit: true,
-        betaScreenshot: false, betaGeocode: false, betaTimeTracker: false,
+        betaScreenshot: false, betaGeocode: false, betaTimeTracker: false, betaStaff: false,
         hideBetaBadge: false, defaultTab: null, accentColor: null, bgColor: null, inputColor: null },
       ({ muteToast, showTabLaunch, showTabTools, showTabAudit,
-         betaScreenshot, betaGeocode, betaTimeTracker,
+         betaScreenshot, betaGeocode, betaTimeTracker, betaStaff,
          hideBetaBadge, defaultTab, accentColor, bgColor, inputColor }) => {
       _muteToast = !!muteToast;
       applyBetaTab('tab-url-opener',   'page-url-opener',   !!showTabLaunch);
@@ -114,6 +114,7 @@ function showToast(msg, type = 'info', duration = 3000) {
       applyBetaTab('tab-screenshot',   'page-screenshot',   !!betaScreenshot);
       applyBetaTab('tab-geocode',      'page-geocode',      !!betaGeocode);
       applyBetaTab('tab-timetracker',  'page-timetracker',  !!betaTimeTracker);
+      applyBetaTab('tab-staff',        'page-staff',        !!betaStaff);
       applyHideBetaBadges(!!hideBetaBadge);
       applyAccent(accentColor);
       applyBg(bgColor);
@@ -134,6 +135,7 @@ function showToast(msg, type = 'info', duration = 3000) {
       if ('betaScreenshot'  in changes) applyBetaTab('tab-screenshot',  'page-screenshot',  !!changes.betaScreenshot.newValue);
       if ('betaGeocode'     in changes) applyBetaTab('tab-geocode',     'page-geocode',     !!changes.betaGeocode.newValue);
       if ('betaTimeTracker' in changes) applyBetaTab('tab-timetracker', 'page-timetracker', !!changes.betaTimeTracker.newValue);
+      if ('betaStaff' in changes) applyBetaTab('tab-staff', 'page-staff', !!changes.betaStaff.newValue);
       if ('hideBetaBadge' in changes) applyHideBetaBadges(!!changes.hideBetaBadge.newValue);
       if ('accentColor'  in changes) applyAccent(changes.accentColor.newValue);
       if ('bgColor'      in changes) applyBg(changes.bgColor.newValue);

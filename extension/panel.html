@@ -16,6 +16,7 @@
   <script src="screenshot-panel.js" defer></script>
   <script src="geocode-panel.js" defer></script>
   <script src="timetracker-panel.js" defer></script>
+  <script src="staff-panel.js" defer></script>
   <script src="settings-panel.js" defer></script>
   <style>
     :root {
@@ -551,6 +552,7 @@
       <button class="page-tab hidden" id="tab-screenshot" data-page="screenshot" role="tab" aria-selected="false" aria-controls="page-screenshot">Screenshot <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-geocode" data-page="geocode" role="tab" aria-selected="false" aria-controls="page-geocode">Geocode <span class="beta-badge">BETA</span></button>
       <button class="page-tab hidden" id="tab-timetracker" data-page="timetracker" role="tab" aria-selected="false" aria-controls="page-timetracker">Time Tracker <span class="beta-badge">BETA</span></button>
+      <button class="page-tab hidden" id="tab-staff" data-page="staff" role="tab" aria-selected="false" aria-controls="page-staff">Staff <span class="beta-badge">BETA</span></button>
 <button class="page-tab" data-page="settings" role="tab" aria-selected="false" aria-controls="page-settings">Settings</button>
     </nav>
 
@@ -831,6 +833,12 @@
               <input type="checkbox" id="st-tab-timetracker" role="switch" style="margin:0">
             </label>
           </div>
+          <div class="settings-row" style="padding-left:0.75rem">
+            <label class="toggle-label" style="justify-content:space-between;width:100%">
+              <span>Staff tab <span class="beta-badge">BETA</span></span>
+              <input type="checkbox" id="st-tab-staff" role="switch" style="margin:0">
+            </label>
+          </div>
         </details>
         <div class="settings-row">
           <label class="toggle-label" style="justify-content:space-between;width:100%">
@@ -974,6 +982,52 @@
           </div>
         </details>
       </fieldset>
+    </div>
+
+
+    <div id="page-staff" class="page hidden">
+      <fieldset>
+        <legend>Batch Add Employees</legend>
+        <p style="font-size:0.78rem;margin-bottom:0.5rem;color:var(--pico-color-amber-600,#b45309)">&#9432; Open the <b>Add Employee</b> form &amp; enable <b>Add Another</b>.</p>
+        <div class="ops-row" style="align-items:center;gap:0.4rem">
+          <button type="button" class="outline secondary pico-btn-sm" id="staff-file-btn" style="white-space:nowrap">&#128193; Choose CSV</button>
+          <span id="staff-file-name" style="flex:1;font-size:0.72rem;color:var(--pico-muted-color);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">No file chosen</span>
+          <input type="file" id="staff-file" accept=".csv,.txt" style="display:none">
+          <button type="button" class="outline secondary pico-btn-sm" id="staff-sample" title="Download CSV template">&#8595; Template</button>
+        </div>
+      </fieldset>
+
+      <div id="staff-employee-section" style="display:none;margin-top:0.5rem">
+        <div id="staff-list" style="max-height:160px;overflow-y:auto;border:1px solid var(--pico-muted-border-color);border-radius:4px;margin-bottom:0.5rem;font-size:0.75rem"></div>
+
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.75rem">
+          <span style="color:var(--pico-muted-color);white-space:nowrap">Delay</span>
+          <input type="range" id="staff-delay-ms" value="1000" min="300" max="5000" step="100" style="flex:1;height:4px;cursor:pointer">
+          <span id="staff-delay-val" style="color:var(--pico-muted-color);min-width:3rem;text-align:right;white-space:nowrap">1000 ms</span>
+        </div>
+
+        <div id="staff-progress-wrap" style="display:none;margin-bottom:0.5rem">
+          <div style="height:5px;background:var(--pico-muted-border-color);border-radius:3px;overflow:hidden;margin-bottom:4px">
+            <div id="staff-progress-fill" style="height:100%;width:0%;background:var(--pico-primary);transition:width 0.3s"></div>
+          </div>
+          <div id="staff-progress-text" style="font-size:0.72rem;color:var(--pico-muted-color)"></div>
+        </div>
+
+        <div id="staff-dept-prompt" style="display:none;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:rgba(33,128,133,.1);border:1px solid rgba(33,128,133,.3);border-radius:4px;font-size:0.75rem">
+          &#9432; Select dept &ldquo;<strong id="staff-dept-name"></strong>&rdquo;, then click <b>Continue</b>.
+        </div>
+
+        <div class="ops-row" style="gap:0.4rem">
+          <button type="button" class="pico-btn-sm" id="staff-run" style="flex:1">Start Import</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="staff-pause" style="display:none">Pause</button>
+          <button type="button" class="outline pico-btn-sm" id="staff-continue" style="display:none;flex:1">Continue</button>
+          <button type="button" class="outline secondary pico-btn-sm" id="staff-reset">Reset</button>
+        </div>
+      </div>
+
+      <div id="staff-log-section" style="display:none;margin-top:0.5rem">
+        <div id="staff-log" style="font-size:0.72rem;max-height:120px;overflow-y:auto;background:var(--pico-card-background-color,rgba(0,0,0,.04));border:1px solid var(--pico-muted-border-color);border-radius:4px;padding:0.4rem"></div>
+      </div>
     </div>
 
     <div id="toast-container"></div>

@@ -285,6 +285,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     })();
     return true;
   }
+
+  if (msg.type === 'STAFF_ADD_EMPLOYEE') {
+    (async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.id) throw new Error('No active browser tab found.');
+        const result = await chrome.tabs.sendMessage(tab.id, msg);
+        sendResponse(result);
+      } catch (e) {
+        sendResponse({ error: String(e) });
+      }
+    })();
+    return true;
+  }
 });
 
 /* Keepalive / Wakeup */
