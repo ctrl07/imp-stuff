@@ -37,6 +37,31 @@
     return row;
   }
 
+  function showMap(lat, lng) {
+    const wrap = document.getElementById('gc-map-wrap');
+    const frame = document.getElementById('gc-map');
+    const snippet = document.getElementById('gc-map-snippet');
+    if (!wrap || !frame) return;
+    const src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+    frame.src = src;
+    wrap.classList.remove('hidden');
+    if (snippet) {
+      const html = `<iframe src="${src}" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+      snippet.textContent = html;
+      snippet.title = 'Click to copy';
+      snippet.onclick = () => navigator.clipboard.writeText(html).then(() => showToast('Iframe HTML copied', 'success'));
+    }
+  }
+
+  function hideMap() {
+    const wrap = document.getElementById('gc-map-wrap');
+    const frame = document.getElementById('gc-map');
+    const snippet = document.getElementById('gc-map-snippet');
+    if (wrap) wrap.classList.add('hidden');
+    if (frame) frame.src = '';
+    if (snippet) snippet.textContent = '';
+  }
+
   function showFwdResult(containerId, result) {
     const node = document.getElementById(containerId);
     if (!node) return;
@@ -116,11 +141,9 @@
           return;
         }
 
-        // Open Google Maps with the address
-        chrome.tabs.create({ url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, active: false });
-
         setStatus('gc-fwd-status', '', false);
         showFwdResult('gc-fwd-result', data[0]);
+        showMap(parseFloat(data[0].lat), parseFloat(data[0].lon));
       } catch (err) {
         setStatus('gc-fwd-status', `Error: ${err.message}`, true);
       } finally {
@@ -149,11 +172,9 @@
           return;
         }
 
-        // Open Google Maps at the coordinates
-        chrome.tabs.create({ url: `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`, active: false });
-
         setStatus('gc-rev-status', '', false);
         showRevResult('gc-rev-result', data);
+        showMap(parseFloat(lat), parseFloat(lng));
       } catch (err) {
         setStatus('gc-rev-status', `Error: ${err.message}`, true);
       } finally {
@@ -166,6 +187,7 @@
       el('gc-address-input').value = '';
       setStatus('gc-fwd-status', '', false);
       hideResult('gc-fwd-result');
+      hideMap();
     });
 
     el('gc-rev-clear').addEventListener('click', () => {
@@ -173,6 +195,7 @@
       el('gc-lng-input').value = '';
       setStatus('gc-rev-status', '', false);
       hideResult('gc-rev-result');
+      hideMap();
     });
 
     // Enter key on address input
