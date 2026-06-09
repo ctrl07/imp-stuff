@@ -146,15 +146,6 @@
       chrome.storage.sync.set({ screenshotImgWaitMs: Number(imgWaitSlider.value) });
     });
 
-    const showDownloadUrlsToggle = document.getElementById('st-show-download-urls');
-    chrome.storage.sync.get('showDownloadUrls', ({ showDownloadUrls }) => {
-      // default is true (shown); only false if explicitly set
-      showDownloadUrlsToggle.checked = showDownloadUrls !== false;
-    });
-    showDownloadUrlsToggle.addEventListener('change', () => {
-      chrome.storage.sync.set({ showDownloadUrls: showDownloadUrlsToggle.checked });
-    });
-
     const hideBetaBadgeToggle = document.getElementById('st-hide-beta-badge');
     chrome.storage.sync.get('hideBetaBadge', ({ hideBetaBadge }) => {
       hideBetaBadgeToggle.checked = !!hideBetaBadge;

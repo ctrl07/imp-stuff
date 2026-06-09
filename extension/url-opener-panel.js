@@ -3,8 +3,7 @@
 (function initUrlOpenerPanel() {
   
 
-  let customTemplates  = [];
-  let showDownloadUrls = true;
+  let customTemplates = [];
 
   function openUrl(template, id) {
     const url = template.url.replace('{id}', encodeURIComponent(id));
@@ -68,16 +67,6 @@
       container.appendChild(wrap);
     });
 
-    // Download URLs button (visibility controlled by setting)
-    if (showDownloadUrls) {
-      const dlBtn = document.createElement('button');
-      dlBtn.type = 'button';
-      dlBtn.className = 'outline secondary pico-btn-sm';
-      dlBtn.textContent = 'Download URLs';
-      dlBtn.addEventListener('click', downloadSiteContentCsv);
-      container.appendChild(dlBtn);
-    }
-
     // + button to open the add-custom form
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
@@ -100,42 +89,6 @@
   }
 
   // Site Content CSV export
-
-  function downloadSiteContentCsv() {
-    chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
-      if (!tab) return;
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => {
-          const rows = document.querySelectorAll('#mainTable tbody tr');
-          const out = [['Page Title', 'Slug']];
-
-          rows.forEach(row => {
-            const select = row.querySelector('select[id^="pageStatus-"]');
-            if (select && parseInt(select.value, 10) === 0) return;
-
-            const titleEl = row.querySelector('strong') || row.querySelector('b');
-            const slugEl  = [...row.querySelectorAll('em')].find(e => e.style.float === 'right');
-
-            if (!titleEl) return;
-
-            const title = titleEl.textContent.trim();
-            const slug  = slugEl ? slugEl.textContent.trim() : '';
-            const esc   = s => `"${s.replace(/"/g, '""')}"`;
-
-            out.push([esc(title), esc(slug)]);
-          });
-
-          const csv = out.map(r => r.join(',')).join('\n');
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-          a.download = 'sitecontent.csv';
-          a.click();
-          URL.revokeObjectURL(a.href);
-        },
-      });
-    });
-  }
 
   // Init
 
@@ -186,19 +139,9 @@
     const input = document.getElementById('uo-id-input');
 
     // Load initial state from storage then render
-    chrome.storage.sync.get(['customTemplates', 'showDownloadUrls'], data => {
-      customTemplates  = data.customTemplates || [];
-      showDownloadUrls = data.showDownloadUrls !== false; // default true
+    chrome.storage.sync.get(['customTemplates'], data => {
+      customTemplates = data.customTemplates || [];
       renderAllButtons(input);
-    });
-
-    // React to settings changes live
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'sync') return;
-      if ('showDownloadUrls' in changes) {
-        showDownloadUrls = !!changes.showDownloadUrls.newValue;
-        renderAllButtons(input);
-      }
     });
 
     // Add custom button form
